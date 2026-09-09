@@ -30,7 +30,7 @@ Desenvolver um sistema embarcado capaz de:
 - DS18B20 (digital, 1-Wire)
 
 ## 🌍 Ambiente
-- BME280 (temperatura, pressão e umidade)
+- DHT22 (temperatura e umidade)
 - MQ135 (qualidade do ar / gases)
 
 ## ⚖️ Peso da colmeia
@@ -54,3 +54,84 @@ Desenvolver um sistema embarcado capaz de:
 - CMake
 - Drivers embarcados customizados
 - Comunicação I2C / SPI / 1-Wire / ADC
+
+---
+
+# 🚀 Como baixar e compilar o projeto BeeBox
+
+Este tutorial apresenta os passos necessários para configurar o ambiente, baixar o código-fonte do **BeeBox** e compilar o projeto utilizando o **Visual Studio Code** e a extensão oficial **Raspberry Pi Pico**.
+
+## 1. Pré-requisitos
+
+Antes de começar, instale:
+
+* Visual Studio Code
+* Git
+* Extensão **Raspberry Pi Pico** para VS Code
+
+---
+
+## 2. Clonar o repositório
+
+Abra um terminal no computador e clone o repositório:
+
+```bash
+git clone https://github.com/PeterIgnatious/BeeBox.git
+```
+
+Após isso abra o projeto no VS Code.
+
+---
+
+## 4. Configurar o projeto para o Raspberry Pi Pico W
+
+Com o projeto aberto, abra a extensão **Raspberry Pi Pico** no menu lateral.
+
+Selecione a opção `Switch Board` e configure para `pico_w`.
+
+A extensão deverá identificar o `CMakeLists.txt` existente no projeto e configurar o ambiente de compilação.
+
+---
+
+## 5. Compilar o projeto
+
+Na extensão **Raspberry Pi Pico**, selecione `Compile Project`:
+
+Se a compilação ocorrer corretamente, será gerado um arquivo `.uf2` dentro da pasta `build`.
+
+Exemplo:
+
+```text
+BeeBox/
+├── CMakeLists.txt
+├── src/
+├── include/
+├── ...
+└── build/
+    └── BeeBox.uf2
+```
+
+---
+
+## 6. Conectar o Raspberry Pi Pico W
+
+Para gravar o programa:
+
+1. Desconecte o Pico W do computador.
+2. Pressione e mantenha pressionado o botão **BOOTSEL**.
+3. Conecte o Pico W ao computador através do USB.
+4. Solte o botão **BOOTSEL**.
+
+O Pico W aparecerá como uma unidade de armazenamento USB.
+
+---
+
+## 7. Gravar o firmware
+
+Depois de compilar, utilize a opção **Run/Run Project** da extensão Raspberry Pi Pico.
+
+Caso não funcione, o que é provável, copie manualmente o arquivo `.uf2` gerado para a unidade do Pico W.
+
+Após a cópia, o Pico W será reiniciado e começará a executar o firmware.
+
+---
