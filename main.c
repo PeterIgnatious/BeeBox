@@ -38,7 +38,7 @@ int main()
 {
     stdio_init_all();
 
-    // SPI initialisation. This example will use SPI at 1MHz.
+    /*// SPI initialisation. This example will use SPI at 1MHz.
     spi_init(SPI_PORT, 1000*1000);
     gpio_set_function(PIN_MISO, GPIO_FUNC_SPI);
     gpio_set_function(PIN_CS,   GPIO_FUNC_SIO);
@@ -75,15 +75,18 @@ int main()
     // Send out a string, with CR/LF conversions
     uart_puts(UART_ID, " Hello, UART!\n");
     
-    // For more examples of UART use see https://github.com/raspberrypi/pico-examples/tree/master/uart
+    // For more examples of UART use see https://github.com/raspberrypi/pico-examples/tree/master/uart*/
+
 
     dht_reading reading;
 
     while (true) {
-        if (dht22_read(&reading)) {
+        if (dht_read(&reading)) {
             printf("Temperatura: %.1f °C\n", reading.temp_celsius);
             printf("Umidade: %.1f %%\n", reading.humidity);
         }
         sleep_ms(1000);
+        printf("Hello World!");
+
     }
 }

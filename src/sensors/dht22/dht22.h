@@ -9,6 +9,6 @@ typedef struct
     float temp_celsius;
 } dht_reading;
 
-bool dht22_read(dht_reading *result);
+bool dht_read(dht_reading *result);
 
 #endif
