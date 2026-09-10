@@ -3,12 +3,12 @@
 
 #include <stdbool.h>
 
-typedef struct {
-    float temperature;
+typedef struct
+{
     float humidity;
-} DHT22_Data;
+    float temp_celsius;
+} dht_reading;
 
-void dht22_init(uint gpio);
-void dht22_read(DHT22_Data *data);
+bool dht22_read(dht_reading *result);
 
 #endif

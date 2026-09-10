@@ -4,6 +4,7 @@
 #include "hardware/i2c.h"
 #include "pico/cyw43_arch.h"
 #include "hardware/uart.h"
+#include "dht22.h"
 
 // SPI Defines
 // We are going to use SPI 0, and allocate it to the following GPIO pins
@@ -76,8 +77,13 @@ int main()
     
     // For more examples of UART use see https://github.com/raspberrypi/pico-examples/tree/master/uart
 
+    dht_reading reading;
+
     while (true) {
-        printf("Hello, world!\n");
+        if (dht22_read(&reading)) {
+            printf("Temperatura: %.1f °C\n", reading.temp_celsius);
+            printf("Umidade: %.1f %%\n", reading.humidity);
+        }
         sleep_ms(1000);
     }
 }

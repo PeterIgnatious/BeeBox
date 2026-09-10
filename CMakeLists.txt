@@ -35,7 +35,10 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(beebox main.c )
+add_executable(beebox 
+    main.c
+    src/sensors/dht22/dht22.c
+)
 
 pico_set_program_name(beebox "beebox")
 pico_set_program_version(beebox "0.1")
@@ -50,7 +53,7 @@ target_link_libraries(beebox
 
 # Add the standard include files to the build
 target_include_directories(beebox PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}/src/sensors/dht22
 )
 
 # Add any user requested libraries
