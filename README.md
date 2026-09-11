@@ -68,6 +68,7 @@ Antes de começar, instale:
 * Visual Studio Code
 * Git
 * Extensão **Raspberry Pi Pico** para VS Code
+* Extensão **Serial Monitor** para VS Code
 
 ---
 
@@ -133,5 +134,3 @@ Depois de compilar, utilize a opção **Run/Run Project** da extensão Raspberry
 Caso não funcione, o que é provável, copie manualmente o arquivo `.uf2` gerado para a unidade do Pico W.
 
 Após a cópia, o Pico W será reiniciado e começará a executar o firmware.
-
----
