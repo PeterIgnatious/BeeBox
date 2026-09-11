@@ -4,8 +4,9 @@
 #include "hardware/gpio.h"
 #include "dht22.h"
 
+// Pino 25 LED on board
 #ifdef PICO_DEFAULT_LED_PIN
-#define LED_PIN PICO_DEFAULT_LED_PIN
+#define LED_PIN PICO_DEFAULT_LED_PIN 
 #endif
 
 const uint DHT_PIN = 15;
@@ -17,12 +18,13 @@ bool dht_read(dht_reading *result) {
     uint last = 1;
     uint j = 0;
 
+    // MCU manda o DHT ler os dados
     gpio_set_dir(DHT_PIN, GPIO_OUT);
     gpio_put(DHT_PIN, 0);
-    sleep_ms(20);
+    sleep_ms(1);
     gpio_set_dir(DHT_PIN, GPIO_IN);
 
-#ifdef LED_PIN
+#ifdef LED_PIN // Compile a linha 26 caso LED_PIN for definido
     gpio_put(LED_PIN, 1);
 #endif
     for (uint i = 0; i < MAX_TIMINGS; i++) {

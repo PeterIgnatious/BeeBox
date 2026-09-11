@@ -3,8 +3,7 @@
 
 #include <stdbool.h>
 
-typedef struct
-{
+typedef struct {
     float humidity;
     float temp_celsius;
 } dht_reading;

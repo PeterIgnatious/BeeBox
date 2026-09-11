@@ -77,7 +77,7 @@ int main()
     
     // For more examples of UART use see https://github.com/raspberrypi/pico-examples/tree/master/uart*/
 
-
+    
     dht_reading reading;
 
     while (true) {
