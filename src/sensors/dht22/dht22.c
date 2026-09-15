@@ -9,25 +9,88 @@
 #define LED_PIN PICO_DEFAULT_LED_PIN 
 #endif
 
-const uint DHT_PIN = 15;
-const uint MAX_TIMINGS = 85;
+const uint DHT_PIN = 8;
+const uint TIMEOUT_ERROR = 1000;
+
+
+uint32_t millis() {
+    return to_ms_since_boot(get_absolute_time());
+}
+
+
+void start_signal() {
+    gpio_set_dir(DHT_PIN, GPIO_OUT);
+    gpio_put(DHT_PIN, 0);
+    sleep_ms(18);
+    gpio_put(DHT_PIN, 1);
+    sleep_us(40);
+    gpio_set_dir(DHT_PIN, GPIO_IN);
+    gpio_pull_up(DHT_PIN);
+}
+
+
+uint8_t read_data() {
+    uint8_t value = 0;
+    
+    for (int i = 0; i < 8; i++) {
+        while (gpio_get(DHT_PIN) == 0);
+        sleep_us(30);
+        if (gpio_get(DHT_PIN) == 1) {
+            value |= (1 << (7 - i));
+        }
+        while (gpio_get(DHT_PIN) == 1);
+    }
+
+    return value;
+}
 
 
 bool dht_read(dht_reading *result) {
-    int data[5] = {0, 0, 0, 0, 0};
+    uint8_t data[5] = {0, 0, 0, 0, 0};
     uint last = 1;
     uint j = 0;
 
-    // MCU manda o DHT ler os dados
-    gpio_set_dir(DHT_PIN, GPIO_OUT);
-    gpio_put(DHT_PIN, 0);
-    sleep_ms(1);
-    gpio_set_dir(DHT_PIN, GPIO_IN);
+    start_signal();
+    uint32_t start_time = millis();
 
-#ifdef LED_PIN // Compile a linha 26 caso LED_PIN for definido
-    gpio_put(LED_PIN, 1);
-#endif
-    for (uint i = 0; i < MAX_TIMINGS; i++) {
+    while (gpio_get(DHT_PIN) == 1) {
+        if (millis() - start_time > TIMEOUT_ERROR) {
+            printf("Não respondeu");
+            return false;
+        }
+    }
+
+    if (gpio_get(DHT_PIN) == 0) {
+        sleep_us(80);
+        if (gpio_get(DHT_PIN) == 1) {
+            sleep_us(80);
+            
+            for (int j = 0; j < 5; j++) {
+                data[j] = read_data();
+            }
+        }
+        if (data[4] == ((data[0] + data[1] + data[2] + data[3]) & 0xFF)) {
+            result->humidity = (float) ((data[0] << 8) + data[1]) / 10;
+            if (result->humidity > 100) {
+                result->humidity = data[0];
+            }
+            result->temp_celsius = (float) (((data[2] & 0x7F) << 8) + data[3]) / 10;
+            if (result->temp_celsius > 125) {
+                result->temp_celsius = data[2];
+            }
+            if (data[2] & 0x80) {
+                result->temp_celsius = -result->temp_celsius;
+            }
+            return true;
+        } else {
+            return false;
+        }
+    } 
+    return false;
+
+    // for (uint i = 0; i < MAX_TIMINGS; i++) {
+
+        /*
         uint count = 0;
         while (gpio_get(DHT_PIN) == last) {
             count++;
@@ -35,6 +98,7 @@ bool dht_read(dht_reading *result) {
             if (count == 255) break;
         }
         last = gpio_get(DHT_PIN);
+
         if (count == 255) break;
 
         if ((i >= 4) && (i % 2 == 0)) {
@@ -42,25 +106,7 @@ bool dht_read(dht_reading *result) {
             if (count > 16) data[j / 8] |= 1;
             j++;
         }
-    }
-#ifdef LED_PIN
-    gpio_put(LED_PIN, 0);
-#endif
-
-    if ((j >= 40) && (data[4] == ((data[0] + data[1] + data[2] + data[3]) & 0xFF))) {
-        result->humidity = (float) ((data[0] << 8) + data[1]) / 10;
-        if (result->humidity > 100) {
-            result->humidity = data[0];
-        }
-        result->temp_celsius = (float) (((data[2] & 0x7F) << 8) + data[3]) / 10;
-        if (result->temp_celsius > 125) {
-            result->temp_celsius = data[2];
-        }
-        if (data[2] & 0x80) {
-            result->temp_celsius = -result->temp_celsius;
-        }
-        return true;
-    } else {
-        return false;
-    }
+        */
+    // }
 }
+
