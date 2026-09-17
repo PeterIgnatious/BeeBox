@@ -49,8 +49,9 @@ pico_enable_stdio_usb(beebox 1)
 
 # Add the standard library to the build
 target_link_libraries(beebox
-        pico_stdlib)
-
+        pico_stdlib
+)
+s
 # Add the standard include files to the build
 target_include_directories(beebox PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/src/sensors/dht22

@@ -148,6 +148,6 @@ Após a cópia, o Pico W será reiniciado e começará a executar o firmware.
 <img width="212" height="176" alt="image" src="https://github.com/user-attachments/assets/af404343-b823-47b5-b2ff-dc5314e20805"/>
 
 - É necessário colocar um resistor pull-up entre Vcc e Data para o seu funcionamento;
-- Datasheet: []
+- Datasheet: [DHT22](src/sensors/dht22/dht11.pdf)
 
 
