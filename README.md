@@ -145,7 +145,7 @@ Após a cópia, o Pico W será reiniciado e começará a executar o firmware.
 ## 💦 DHT22
 
 ### Pinout
-<img width="212" height="176" alt="image" src="https://github.com/user-attachments/assets/af404343-b823-47b5-b2ff-dc5314e20805"/>
+<img width="210" height="180" alt="image" src="https://github.com/user-attachments/assets/af404343-b823-47b5-b2ff-dc5314e20805"/>
 
 - É necessário colocar um resistor pull-up entre Vcc e Data para o seu funcionamento;
 - Datasheet: [DHT22](src/sensors/dht22/dht11.pdf)
