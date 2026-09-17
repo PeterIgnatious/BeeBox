@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "pico/stdlib.h"
+#include "pico/cyw43_arch.h"
 #include "hardware/gpio.h"
 #include "dht22.h"
 
@@ -9,7 +10,7 @@
 #define LED_PIN PICO_DEFAULT_LED_PIN 
 #endif
 
-const uint DHT_PIN = 8;
+const uint DHT_PIN = 20;
 const uint TIMEOUT_ERROR = 1000;
 
 
@@ -19,6 +20,7 @@ uint32_t millis() {
 
 
 void start_signal() {
+    gpio_init(DHT_PIN);
     gpio_set_dir(DHT_PIN, GPIO_OUT);
     gpio_put(DHT_PIN, 0);
     sleep_ms(18);

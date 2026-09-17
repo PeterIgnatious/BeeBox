@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
+#include "hardware/gpio.h"
 #include "hardware/spi.h"
 #include "hardware/i2c.h"
 #include "pico/cyw43_arch.h"
@@ -182,7 +183,7 @@ int main()
             printf("Temperatura: %.1f °C\n", reading.temp_celsius);
             printf("Umidade: %.1f %%\n", reading.humidity);
         } else {
-            printf("Erro :(\n");
+            printf("Erro!\n");
         }
 
         sleep_ms(500);
