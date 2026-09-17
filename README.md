@@ -1,6 +1,6 @@
 # 🐝 BeeBox — Sistema de Monitoramento Inteligente de Colmeias
 
-Projeto desenvolvido para a **SBESC (Simpósio Brasileiro de Engenharia de Sistemas Computacionais)**, sob orientação do Prof. Victor Medeiros.
+Projeto desenvolvido para a **SBESC (Simpósio Brasileiro de Engenharia de Sistemas Computacionais)**, sob orientação do Prof. Victor Medeiros e Profª. Edna Barros.
 
 O sistema BeeBox consiste em uma plataforma embarcada de monitoramento de colmeias de abelhas, utilizando múltiplos sensores ambientais, estruturais e acústicos, além de comunicação de longa distância via LoRa.
 
@@ -27,23 +27,26 @@ Desenvolver um sistema embarcado capaz de:
 # 📡 Sensores utilizados
 
 ## 🌡️ Temperatura
-- DS18B20 (digital, 1-Wire)
+- 🔄 DS18B20 (digital, 1-Wire)
 
 ## 🌍 Ambiente
-- DHT22 (temperatura e umidade)
-- MQ135 (qualidade do ar / gases)
+- ✅ DHT22 (temperatura e umidade)
+- ❌ MQ135 (qualidade do ar / gases)
 
 ## ⚖️ Peso da colmeia
-- Célula de carga (com amplificador HX711)
+- ❌ Célula de carga (com amplificador HX711)
 
 ## 🎤 Áudio interno
-- INMP411 (microfone MEMS)
+- ❌ INMP411 (microfone MEMS)
 
 ## 🧭 Movimento / vibração
-- MPU6050 (acelerômetro + giroscópio)
+- 🔄 MPU6050 (acelerômetro + giroscópio)
 
 ## 📶 Comunicação
-- SX1278 (LoRa — longa distância)
+- ❌ SX1278 (LoRa — longa distância)
+
+## 🌡️ Tempo Real
+- ❌ DS1302 (Real Time Clock Module)
 
 ---
 
@@ -134,3 +137,17 @@ Depois de compilar, utilize a opção **Run/Run Project** da extensão Raspberry
 Caso não funcione, o que é provável, copie manualmente o arquivo `.uf2` gerado para a unidade do Pico W.
 
 Após a cópia, o Pico W será reiniciado e começará a executar o firmware.
+
+---
+
+# 📡 Como implementar os sensores na BitDogLab
+
+## 💦 DHT22
+
+### Pinout
+<img width="212" height="176" alt="image" src="https://github.com/user-attachments/assets/af404343-b823-47b5-b2ff-dc5314e20805"/>
+
+- É necessário colocar um resistor pull-up entre Vcc e Data para o seu funcionamento;
+- Datasheet: []
+
+
