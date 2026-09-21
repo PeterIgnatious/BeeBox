@@ -4,6 +4,7 @@
 #include "pico/cyw43_arch.h"
 #include "hardware/gpio.h"
 #include "dht22.h"
+#include "utils.h"
 
 // Pino 25 LED on board
 #ifdef PICO_DEFAULT_LED_PIN
@@ -12,11 +13,6 @@
 
 const uint DHT_PIN = 20;
 const uint TIMEOUT_ERROR = 1000;
-
-
-uint32_t millis() {
-    return to_ms_since_boot(get_absolute_time());
-}
 
 
 void start_signal() {
@@ -89,26 +85,5 @@ bool dht_read(dht_reading *result) {
         }
     } 
     return false;
-
-    // for (uint i = 0; i < MAX_TIMINGS; i++) {
-
-        /*
-        uint count = 0;
-        while (gpio_get(DHT_PIN) == last) {
-            count++;
-            sleep_us(1);
-            if (count == 255) break;
-        }
-        last = gpio_get(DHT_PIN);
-
-        if (count == 255) break;
-
-        if ((i >= 4) && (i % 2 == 0)) {
-            data[j / 8] <<= 1;
-            if (count > 16) data[j / 8] |= 1;
-            j++;
-        }
-        */
-    // }
 }
 

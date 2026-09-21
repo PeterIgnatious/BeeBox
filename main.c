@@ -6,6 +6,7 @@
 #include "pico/cyw43_arch.h"
 #include "hardware/uart.h"
 #include "dht22.h"
+#include "ds18b20.h"
 
 
 // SPI Defines
@@ -176,16 +177,21 @@ int main()
 
 
 
-    dht_reading reading;
+    dht_reading reading; // Melhorar sáporra
+    DS18B20_Data ds_sensor;
+    
+    gpio_init(13);
+    gpio_set_dir(13, GPIO_OUT);
+    gpio_put(13, 1);
 
     while (true) {
         if (dht_read(&reading)) {
             printf("Temperatura: %.1f °C\n", reading.temp_celsius);
             printf("Umidade: %.1f %%\n", reading.humidity);
-        } else {
-            printf("Erro!\n");
         }
 
+        ds18b20_init(&ds_sensor, 20);
+        printf("Status: %d", ds_sensor.status);
         sleep_ms(500);
     }
 }

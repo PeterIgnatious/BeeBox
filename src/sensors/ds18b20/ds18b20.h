@@ -1,14 +1,17 @@
-#ifndef DHT22_H
-#define DHT22_H
+#ifndef DS18B20_H
+#define DS18B20_H
 
 #include <stdbool.h>
 
 typedef struct {
-    float temperature;
-    float humidity;
-} DHT22_Data;
+    int pin;
+    int status;
+    float tl;
+    float th;
+    float current_temp;
+} DS18B20_Data;
 
-void dht22_init(uint gpio);
-void dht22_read(DHT22_Data *data);
+bool ds18b20_init(DS18B20_Data* DS_PIN, int gpio);
+void ds18b20_resolution(int resolution);
 
 #endif
