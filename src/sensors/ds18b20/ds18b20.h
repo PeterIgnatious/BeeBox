@@ -10,6 +10,9 @@ typedef struct {
     uint8_t tl;
     uint8_t th;
     uint8_t config_reg;
+    uint8_t reserved1;
+    uint8_t reserved2;
+    uint8_t reserved3;
     uint8_t crc;
     float current_temp;
 } DS18B20_Data;
