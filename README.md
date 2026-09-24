@@ -27,14 +27,14 @@ Desenvolver um sistema embarcado capaz de:
 # 📡 Sensores utilizados
 
 ## 🌡️ Temperatura
-- 🔄 DS18B20 (digital, 1-Wire)
+- ✅ DS18B20 (digital, 1-Wire)
 
 ## 🌍 Ambiente
 - ✅ DHT22 (temperatura e umidade)
 - ❌ MQ135 (qualidade do ar / gases)
 
 ## ⚖️ Peso da colmeia
-- ❌ Célula de carga (com amplificador HX711)
+- 🔄 Célula de carga (com amplificador HX711)
 
 ## 🎤 Áudio interno
 - ❌ INMP411 (microfone MEMS)
@@ -139,13 +139,6 @@ Caso não funcione, o que é provável, copie manualmente o arquivo `.uf2` gerad
 Após a cópia, o Pico W será reiniciado e começará a executar o firmware.
 
 ---
-
-# 📡 Como implementar os sensores na BitDogLab
-
-## 💦 DHT22
-
-### Pinout
-<img width="210" height="180" alt="image" src="https://github.com/user-attachments/assets/af404343-b823-47b5-b2ff-dc5314e20805"/>
 
 - É necessário colocar um resistor pull-up entre Vcc e Data para o seu funcionamento;
 - Datasheet: [DHT22](src/sensors/dht22/dht11.pdf)
