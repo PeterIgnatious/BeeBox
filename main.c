@@ -177,21 +177,23 @@ int main()
 
 
 
-    dht_reading reading; // Melhorar sáporra
-    DS18B20_Data ds_sensor;
+    dht_reading dht22; // Melhorar sáporra
+    DS18B20_Data ds18b20_nest;
     
     gpio_init(13);
     gpio_set_dir(13, GPIO_OUT);
     gpio_put(13, 1);
+    ds18b20_init(&ds18b20_nest, 20);
 
     while (true) {
-        /*
-        if (dht_read(&reading)) {
-            printf("Temperatura: %.1f °C\n", reading.temp_celsius);
-            printf("Umidade: %.1f %%\n", reading.humidity);
+    
+        if (dht_read(&dht22)) {
+            printf("Temperatura: %.1f °C\n", dht22.temp_celsius);
+            printf("Umidade: %.1f %%\n", dht22.humidity);
         }
-        */
-        ds18b20_init(&ds_sensor, 20);
+
+        ds18b20_get_temperature(&ds18b20_nest);
+        printf("Temperatura: %.1f °C\n", ds18b20_nest.current_temp);
         sleep_ms(500);
     }
 }

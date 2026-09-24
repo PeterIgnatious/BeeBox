@@ -17,6 +17,7 @@ typedef struct {
     float current_temp;
 } DS18B20_Data;
 
-bool ds18b20_init(DS18B20_Data *DS_PIN, int gpio);
+bool ds18b20_init(DS18B20_Data* DS_PIN, int gpio);
+void ds18b20_get_temperature(DS18B20_Data* sensor);
 
 #endif

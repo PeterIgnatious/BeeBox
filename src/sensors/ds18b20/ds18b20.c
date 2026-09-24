@@ -13,14 +13,15 @@ const uint8_t WRITE_SCRATCHPAD = 0x4E;
 const uint8_t READ_SCRATCHPAD = 0xBE;
 const uint8_t TEMP_MIN = 0x00; // Definir melhor
 const uint8_t TEMP_MAX = 0xFF; // Definir melhor
-const uint8_t RESOLUTION = 0x1F;
-
+const uint8_t RESOLUTION = 0x7F;
+const int CONVERTION_TIME = 750;
 
 
 void send_byte(DS18B20_Data* sensor, uint8_t command);
 void send_bit(DS18B20_Data* sensor, bool bit_state);
 uint8_t read_byte(DS18B20_Data* sensor);
 bool read_bit(DS18B20_Data* sensor);
+void read_scratchpad(DS18B20_Data* sensor);
 
 
 void init_procedure(DS18B20_Data* sensor) {
@@ -48,38 +49,9 @@ bool ds18b20_init(DS18B20_Data* sensor, int ds_pin) {
     send_byte(sensor, TEMP_MAX);
     send_byte(sensor, TEMP_MIN);
     send_byte(sensor, RESOLUTION);
+    read_scratchpad(sensor);
 
     return true;
-
-    
-
-    /*
-    uint32_t start_time = millis();
-    while (millis() - start_time < PRESENCE_MAX_TIME) {
-        if (gpio_get(sensor->pin) == 0) {
-            init_procedure(sensor);
-            send_byte(sensor, 0xCC);
-            send_byte(sensor, 0x44);
-            sleep_us(750000);
-
-            init_procedure(sensor);
-            send_byte(sensor, 0xCC);
-            send_byte(sensor, 0xBE);
-
-            sensor->temp_lsb = read_byte(sensor);
-            sensor->temp_msb = read_byte(sensor);
-            sensor->th= read_byte(sensor);
-            sensor->tl = read_byte(sensor);
-            sensor->config_reg = read_byte(sensor);
-
-            printf("temp_lsb: 0x%02X\n", sensor->temp_lsb);
-            printf("temp_msb: 0x%02X\n", sensor->temp_msb);
-            printf("temp_th: 0x%02X\n", sensor->th);
-            return true;
-        }
-    }
-    return false;
-    */
 }
 
 
@@ -87,7 +59,7 @@ void read_scratchpad(DS18B20_Data* sensor) {
     init_procedure(sensor);
     send_byte(sensor, SKIP_ROM);
     send_byte(sensor, CONVERT_T);
-    sleep_ms(100);
+    sleep_ms(CONVERTION_TIME);
 
     init_procedure(sensor);
     send_byte(sensor, SKIP_ROM);
@@ -105,8 +77,11 @@ void read_scratchpad(DS18B20_Data* sensor) {
 }
 
 
-void get_temperature(DS18B20_Data* sensor) {
+void ds18b20_get_temperature(DS18B20_Data* sensor) {
     read_scratchpad(sensor);
+    uint16_t value = sensor->temp_lsb | (sensor->temp_msb << 8);
+    float temperature = value * 0.0625;
+    sensor->current_temp = temperature;
 }
 
 
