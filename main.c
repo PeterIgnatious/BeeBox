@@ -7,6 +7,7 @@
 #include "hardware/uart.h"
 #include "dht22.h"
 #include "ds18b20.h"
+#include "hx711.h"
 
 
 // SPI Defines
@@ -179,11 +180,13 @@ int main()
 
     dht_reading dht22; // Melhorar sáporra
     DS18B20_Data ds18b20_nest;
+    HX711_Data hx711;
     
     gpio_init(13);
     gpio_set_dir(13, GPIO_OUT);
     gpio_put(13, 1);
     ds18b20_init(&ds18b20_nest, 20);
+    hx711_init(&hx711, 14, 15, 0, 0);
 
     while (true) {
     
@@ -194,6 +197,8 @@ int main()
 
         ds18b20_get_temperature(&ds18b20_nest);
         printf("Temperatura: %.1f °C\n", ds18b20_nest.current_temp);
+
+        hx711_get_tara(&hx711);
         sleep_ms(500);
     }
 }
