@@ -186,10 +186,11 @@ int main()
     gpio_set_dir(13, GPIO_OUT);
     gpio_put(13, 1);
     ds18b20_init(&ds18b20_nest, 20);
-    hx711_init(&hx711, 14, 15, 0, 0);
+    hx711_init(&hx711, 18, 19, 0, 0);
 
     while (true) {
     
+        /*
         if (dht_read(&dht22)) {
             printf("Temperatura: %.1f °C\n", dht22.temp_celsius);
             printf("Umidade: %.1f %%\n", dht22.humidity);
@@ -197,8 +198,9 @@ int main()
 
         ds18b20_get_temperature(&ds18b20_nest);
         printf("Temperatura: %.1f °C\n", ds18b20_nest.current_temp);
-
-        hx711_get_tara(&hx711);
-        sleep_ms(500);
+        
+        hx711_get_weight(&hx711);
+        sleep_ms(50);
+        */
     }
 }
