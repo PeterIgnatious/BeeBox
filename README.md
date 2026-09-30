@@ -34,7 +34,7 @@ Desenvolver um sistema embarcado capaz de:
 - ❌ MQ135 (qualidade do ar / gases)
 
 ## ⚖️ Peso da colmeia
-- 🔄 Célula de carga (com amplificador HX711)
+- ✅ Célula de carga (com amplificador HX711)
 
 ## 🎤 Áudio interno
 - ❌ INMP411 (microfone MEMS)
@@ -46,7 +46,7 @@ Desenvolver um sistema embarcado capaz de:
 - ❌ SX1278 (LoRa — longa distância)
 
 ## 🌡️ Tempo Real
-- ❌ DS1302 (Real Time Clock Module)
+- 🔄 DS1302 (Real Time Clock Module)
 
 ---
 
