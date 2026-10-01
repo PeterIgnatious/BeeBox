@@ -41,8 +41,11 @@ void ds1302_init(DS1302_Data* sensor, uint8_t dat_pin, uint8_t clk_pin, uint8_t 
 
 
 void write_byte(DS1302_Data* sensor, uint8_t byte) {
+    gpio_set_dir(sensor->dat_pin, GPIO_OUT);
     for (int i = 0; i < 8; i++) {
-        
+        gpio_put(sensor->dat_pin, byte & 0x01);
+        byte >>= 1;
+        next_bit(sensor);
     }
     
 }
@@ -52,3 +55,10 @@ void read_byte(DS1302_Data* sensor, uint8_t address) {
 
 }
 
+
+void next_bit(DS1302_Data* sensor) {
+    gpio_put(sensor->clk_pin, 1);
+    sleep_us(2);
+    gpio_put(sensor->clk_pin, 0);
+    sleep_us(2);
+}
