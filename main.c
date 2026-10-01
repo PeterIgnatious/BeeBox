@@ -8,6 +8,7 @@
 #include "dht22.h"
 #include "ds18b20.h"
 #include "hx711.h"
+#include "ds1302.h"
 
 
 // SPI Defines
