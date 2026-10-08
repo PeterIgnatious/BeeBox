@@ -1,5 +1,4 @@
-#include <stdio.h>
-#include "mpu6050.h"
+#include "haw/MPU6050.h"
 #include "math.h"
 #include "stdlib.h"
 

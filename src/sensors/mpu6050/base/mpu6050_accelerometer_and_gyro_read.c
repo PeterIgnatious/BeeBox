@@ -1,32 +1,23 @@
-#include <stdio.h>
+#include "stdio.h"
 #include "pico/stdlib.h"
-#include "hardware/gpio.h"
-#include "hardware/spi.h"
-#include "hardware/i2c.h"
-#include "pico/cyw43_arch.h"
-#include "hardware/uart.h"
-#include "dht22.h"
-#include "ds18b20.h"
-#include "hx711.h"
-#include "ds1302.h"
-#include "mpu6050.h"
+#include "haw/MPU6050.h"
 
 int main()
 {
     stdio_init_all();
 
-    i2c_init(i2c0, 400 * 1000);
+    // Setup I2C properly
+    gpio_init(8);
+    gpio_init(9);
     gpio_set_function(8, GPIO_FUNC_I2C);
     gpio_set_function(9, GPIO_FUNC_I2C);
+    // Don't forget the pull ups! | Or use external ones
     gpio_pull_up(8);
     gpio_pull_up(9);
 
-    sleep_ms(5000);
-
-    mpu6050_t mpu6050 = mpu6050_init(i2c0, MPU6050_ADDRESS_A0_VCC);
-    uint8_t who_am_i = mpu6050_who_am_i(&mpu6050);
-
-    printf("WHO_AM_I = 0x%02X\n", who_am_i);
+    // Pass in the I2C driver (Important for dual-core operations). The second parameter is the address,
+    // which can change if you connect pin A0 to GND or to VCC.
+    mpu6050_t mpu6050 = mpu6050_init(i2c_default, MPU6050_ADDRESS_A0_VCC);
 
     // Check if the MPU6050 can initialize
     if (mpu6050_begin(&mpu6050))

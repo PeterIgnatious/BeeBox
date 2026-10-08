@@ -38,6 +38,7 @@ pico_sdk_init()
 add_executable(beebox 
     main.c
     src/sensors/dht22/dht22.c
+    src/sensors/mpu6050/mpu6050.c
     src/sensors/ds18b20/ds18b20.c
     src/sensors/hx711/hx711.c
     src/sensors/ds1302/ds1302.c
@@ -60,6 +61,7 @@ target_link_libraries(beebox
 target_include_directories(beebox PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/src/sensors/dht22
         ${CMAKE_CURRENT_LIST_DIR}/src/sensors/ds18b20
+        ${CMAKE_CURRENT_LIST_DIR}/src/sensors/mpu6050
         ${CMAKE_CURRENT_LIST_DIR}/src/sensors/hx711
         ${CMAKE_CURRENT_LIST_DIR}/src/sensors/ds1302
         ${CMAKE_CURRENT_LIST_DIR}/src/utils
