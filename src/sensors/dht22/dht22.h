@@ -4,10 +4,12 @@
 #include <stdbool.h>
 
 typedef struct {
+    uint8_t data_pin;
     float humidity;
     float temp_celsius;
-} dht_reading;
+} DHT22_Data;
 
-bool dht_read(dht_reading *result);
+void dht22_init(DHT22_Data *sensor, uint8_t pin);
+bool dht22_read(DHT22_Data* sensor);
 
 #endif
