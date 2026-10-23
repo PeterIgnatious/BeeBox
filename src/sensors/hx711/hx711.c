@@ -1,19 +1,19 @@
-
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "hx711.h"
+#include <math.h>
 
 // Valor padrão da leitura do HX711 com a balança sem carga adicional (tara).
-const int LOADCELL_TARA_DEFAULT = 8405871;
+const int LOADCELL_TARA_DEFAULT = 8691130;
 
 // Fator de escala padrão, obtido durante a calibração da célula de carga.
 // É utilizado para converter a diferença entre a leitura atual e a tara em peso.
-const int LOADCELL_SCALE_FACTOR_DEFAULT = 447;
+const int LOADCELL_SCALE_FACTOR_DEFAULT = 461;
 
 
 // Inicializa o HX711, configurando os pinos e os parâmetros de calibração.
-void hx711_init(HX711_Data* sensor, uint8_t dt_pin, uint8_t sck_pin, uint32_t scale_factor, uint32_t tara_count) {
+void hx711_init(HX711_Data* sensor, uint8_t dt_pin, uint8_t sck_pin, float scale_factor, uint32_t tara_count) {
 
     // Armazena os pinos utilizados pelo sensor.
     sensor->dt_pin = dt_pin;
@@ -81,27 +81,26 @@ void hx711_read_count(HX711_Data* sensor) {
 }
 
 
-// Realiza várias leituras e calcula a média para reduzir oscilações.
-void hx711_get_average_count(HX711_Data* sensor, int samples) {
+void hx711_get_average_count(HX711_Data *sensor, int samples)
+{
+    if (samples <= 0) return;
 
-    int sum = 0;
+    int64_t sum = 0;
 
-    // Lê o HX711 várias vezes e acumula os valores obtidos.
     for (int i = 0; i < samples; i++) {
         hx711_read_count(sensor);
         sum += sensor->current_count;
     }
 
-    // Calcula a média das leituras e armazena o resultado.
-    sensor->current_count = sum / samples;
+    sensor->current_count = (int32_t)(sum / samples);
 }
 
 
 // Obtém o peso a partir da leitura média do HX711.
-void hx711_get_weight(HX711_Data* sensor) {
+void hx711_get_weight(HX711_Data* sensor, int samples) {
 
     // Realiza 10 leituras e utiliza a média como valor atual.
-    hx711_get_average_count(sensor, 10);
+    hx711_get_average_count(sensor, samples);
 
     float weight = 0;
 
@@ -111,6 +110,7 @@ void hx711_get_weight(HX711_Data* sensor) {
         // Subtrai a tara e divide pelo fator de escala
         // para converter a leitura em peso.
         weight = (sensor->current_count - sensor->tara_count) / sensor->scale_factor;
+        weight = round(weight / 10) * 10;
     }
 
     // Armazena o peso calculado na estrutura do sensor.

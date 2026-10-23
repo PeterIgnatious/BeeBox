@@ -12,12 +12,13 @@
 #include "ds1302.h"
 
 // Definição dos pinos GPIO utilizados pelos sensores
-const uint DHT22_DATA_PIN = 21;  // Pino de dados do DHT22
-const uint DS18B20_DATA_PIN = 20; // Pino de dados do DS18B20
+const uint DHT22_DATA_PIN = 20;  // Pino de dados do DHT22
+const uint DS18B20_DATA_PIN = 17; // Pino de dados do DS18B20
 const uint HX711_DT_PIN = 18;    // Pino DT: saída de dados do HX711
 const uint HX711_SCK_PIN = 19;   // Pino SCK: sinal de clock do HX711
-const uint HX711_TARA = 0;
-const uint HX711_SCALE_FACTOR = 0;
+const uint HX711_TARA = 8690395;
+const float HX711_SCALE_FACTOR = 424;
+
 
 int main()
 {
@@ -35,7 +36,7 @@ int main()
     HX711_Data hx711;
 
     // Inicializa o sensor DHT22, informando seu pino de dados.
-    dht22_init(&dht22, DHT22_DATA_PIN);
+    // dht22_init(&dht22, DHT22_DATA_PIN);
 
     // Inicializa o DS18B20, informando seu pino de dados.
     ds18b20_init(&ds18b20, DS18B20_DATA_PIN);
@@ -43,28 +44,32 @@ int main()
     // Inicializa o HX711, informando os pinos DT e SCK.
     // Os dois últimos argumentos (0, 0) dependem da
     // implementação da função no módulo hx711.
-    hx711_init(&hx711, HX711_DT_PIN, HX711_SCK_PIN, HX711_TARA, HX711_SCALE_FACTOR);
+    //hx711_init(&hx711, HX711_DT_PIN, HX711_SCK_PIN, HX711_SCALE_FACTOR, HX711_TARA);
 
     while (true) {
 
         // Realiza a leitura de temperatura e umidade do DHT22.
-        dht22_read(&dht22);
+        // dht22_read(&dht22);
 
         // Obtém a temperatura medida pelo DS18B20.
         ds18b20_get_temperature(&ds18b20);
 
         // Obtém o peso medido pela célula de carga
         // através do conversor HX711.
-        hx711_get_weight(&hx711);
+        //hx711_get_weight(&hx711, 50);
+        // dht22_read(&dht22);
 
-        printf("\n===============================\n");
+        printf("===============================\n");
         printf("Relatório de Sensores:\n");
-        printf("DHT22 - Temperatura: %.1f °C, Umidade: %.1f %%\n",
-               dht22.temp_celsius, dht22.humidity);
-        printf("DS18B20 - Temperatura: %.1f °C\n",
-               ds18b20.current_temp);
-        printf("HX711 - Peso: %.2f g\n", hx711.weight);
+        // printf("DHT22 - Temperatura: %.1f °C, Umidade: %.1f %%\n",dht22.temp_celsius,dht22.humidity);
+        // printf("DHT22_17 - Temperatura: %.1f °C, Umidade: %.1f %%\n",dht22_17.temp_celsius,dht22_17.humidity);
+        printf("DS18B20 - Temperatura: %.1f °C\n", ds18b20.current_temp);
+        //printf("HX711 - Current Count: %d\n", hx711.current_count);
+        //printf("HX711 - Tara: %d \n", hx711.tara_count);
+        //printf("HX711 - Scale Factor: %f \n", hx711.scale_factor);
+        //printf("HX711 - Weight: %.2f g\n", hx711.weight);
+        printf("===============================\n");
         
-        sleep_ms(1000);
+        sleep_ms(100);
     }
 }

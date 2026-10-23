@@ -28,6 +28,7 @@ void start_signal(DHT22_Data* sensor) {
 
     // O microcontrolador mantém o pino em nível baixo
     // por pelo menos 1 ms; aqui são utilizados 18 ms.
+    gpio_set_dir(sensor->data_pin, GPIO_OUT);
     gpio_put(sensor->data_pin, 0);
     sleep_ms(18);
 
