@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <math.h>
+
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
 #include "hardware/gpio.h"
 #include "dht22.h"
 #include "utils.h"
+#include "hardware/timer.h"
 
 // Tempo máximo de espera para detectar uma resposta do sensor.
 const uint TIMEOUT_ERROR = 1000;
@@ -43,28 +45,52 @@ void start_signal(DHT22_Data* sensor) {
 
 
 // Lê um byte (8 bits) enviado pelo sensor.
-uint8_t read_data(DHT22_Data* sensor) {
+// Espera um nivel logico, com tempo limite em microssegundos.
+static bool esperar_nivel(
+    DHT22_Data *sensor,
+    bool nivel_esperado,
+    uint32_t timeout_us
+) {
+    uint32_t inicio = time_us_32();
+
+    while ((gpio_get(sensor->data_pin) != 0) != nivel_esperado) {
+        if ((uint32_t)(time_us_32() - inicio) >= timeout_us) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+// Le um byte do DHT22 com protecao contra esperas infinitas.
+static bool read_data(DHT22_Data *sensor, uint8_t *resultado) {
     uint8_t value = 0;
 
     for (int i = 0; i < 8; i++) {
 
-        // Aguarda o início do pulso alto correspondente ao bit.
-        while (gpio_get(sensor->data_pin) == 0);
-
-        // Aguarda parte do pulso para distinguir 0 de 1.
-        sleep_us(30);
-
-        // Se a linha continuar alta após 30 us,
-        // considera o bit recebido como 1.
-        if (gpio_get(sensor->data_pin) == 1) {
-            value |= (1 << (7 - i));
+        // Aguarda o inicio do pulso alto.
+        if (!esperar_nivel(sensor, true, 150)) {
+            printf("[DHT22] Timeout esperando nivel alto, bit %d.\n", i);
+            return false;
         }
 
-        // Aguarda o fim do pulso alto antes do próximo bit.
-        while (gpio_get(sensor->data_pin) == 1);
+        // Distingue os bits 0 e 1 pela duracao do pulso.
+        sleep_us(30);
+
+        if (gpio_get(sensor->data_pin) == 1) {
+            value |= (uint8_t)(1u << (7 - i));
+        }
+
+        // Aguarda o final do pulso alto.
+        if (!esperar_nivel(sensor, false, 150)) {
+            printf("[DHT22] Timeout esperando nivel baixo, bit %d.\n", i);
+            return false;
+        }
     }
 
-    return value;
+    *resultado = value;
+    return true;
 }
 
 
@@ -95,10 +121,14 @@ bool dht22_read(DHT22_Data* sensor) {
 
         if (gpio_get(sensor->data_pin) == 1) {
             sleep_us(80);
+            
+            for (int j = 0; j < 5; j++){
+                    // Recebe os cinco bytes transmitidos pelo DHT22.
+                if (!read_data(sensor, &data[j])) {
+                    printf("[DHT22] Falha ao ler o byte %d.\n", j);
+                    return false;
+                }
 
-            // Recebe os cinco bytes transmitidos pelo DHT22.
-            for (int j = 0; j < 5; j++) {
-                data[j] = read_data(sensor);
             }
         }
 

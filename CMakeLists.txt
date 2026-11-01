@@ -37,6 +37,7 @@ pico_sdk_init()
 
 add_executable(beebox 
     main.c
+    src/network/thingsboard_tls.c
     src/sensors/dht22/dht22.c
     src/sensors/mpu6050/mpu6050.c
     src/sensors/ds18b20/ds18b20.c
@@ -59,19 +60,29 @@ target_link_libraries(beebox
 
 # Add the standard include files to the build
 target_include_directories(beebox PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}/src/network/tls_config
+        ${CMAKE_CURRENT_LIST_DIR}
         ${CMAKE_CURRENT_LIST_DIR}/src/sensors/dht22
         ${CMAKE_CURRENT_LIST_DIR}/src/sensors/ds18b20
         ${CMAKE_CURRENT_LIST_DIR}/src/sensors/mpu6050
         ${CMAKE_CURRENT_LIST_DIR}/src/sensors/hx711
         ${CMAKE_CURRENT_LIST_DIR}/src/sensors/ds1302
         ${CMAKE_CURRENT_LIST_DIR}/src/utils
+        ${CMAKE_CURRENT_LIST_DIR}/src/network
+        ${CMAKE_CURRENT_LIST_DIR}/src/network/tls_config
 )
 
 # Add any user requested libraries
-target_link_libraries(beebox 
+target_link_libraries(beebox
         hardware_spi
         hardware_i2c
-        pico_cyw43_arch_none
-        )
+        pico_cyw43_arch_lwip_threadsafe_background
+        pico_lwip_mbedtls
+        pico_mbedtls
+)
+
+target_compile_definitions(beebox PRIVATE
+    ALTCP_MBEDTLS_AUTHMODE=MBEDTLS_SSL_VERIFY_REQUIRED
+)
 
 pico_add_extra_outputs(beebox)

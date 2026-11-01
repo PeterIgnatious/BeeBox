@@ -1,0 +1,7 @@
+#ifndef THINGSBOARD_CONFIG_H
+#define THINGSBOARD_CONFIG_H
+
+#define THINGSBOARD_HOST "tb.cin.ufpe.br"
+#define THINGSBOARD_TOKEN "mwQl5qZCO7XBfQH2LxzT"
+
+#endif

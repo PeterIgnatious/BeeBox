@@ -4,12 +4,20 @@
 #include "hardware/spi.h"
 #include "hardware/i2c.h"
 #include "pico/cyw43_arch.h"
+#include "wifi_config.h"
 #include "hardware/uart.h"
 
 #include "dht22.h"
 #include "ds18b20.h"
 #include "hx711.h"
 #include "ds1302.h"
+
+// Includes para a conexão ao thingsboard
+#include <stdbool.h>
+#include "lwip/dns.h"
+#include "thingsboard_tls.h"
+#include "thingsboard_config.h"
+#include "globalsign_root_r46.h"
 
 // Definição dos pinos GPIO utilizados pelos sensores
 const uint DHT22_DATA_PIN = 20;  // Pino de dados do DHT22
@@ -20,6 +28,128 @@ const uint HX711_TARA = 8690395;
 const float HX711_SCALE_FACTOR = 424;
 
 
+static volatile bool dns_finalizado = false;
+static volatile bool dns_sucesso = false;
+static ip_addr_t endereco_tb;
+
+static void resposta_dns(const char *nome,
+                         const ip_addr_t *ip,
+                         void *arg) {
+    if (ip != NULL) {
+        endereco_tb = *ip;
+        dns_sucesso = true;
+    }
+
+    dns_finalizado = true;
+}
+
+void testar_conexao_thingsboard() {
+    printf("[ThingsBoard] Procurando servidor...\n");
+
+    dns_finalizado = false;
+    dns_sucesso = false;
+
+    cyw43_arch_lwip_begin();
+
+    err_t resultado = dns_gethostbyname(
+        "tb.cin.ufpe.br",
+        &endereco_tb,
+        resposta_dns,
+        NULL
+    );
+
+    cyw43_arch_lwip_end();
+
+    if (resultado == ERR_OK) {
+        dns_sucesso = true;
+        dns_finalizado = true;
+    } else if (resultado != ERR_INPROGRESS) {
+        printf("[ThingsBoard] Erro DNS: %d\n", resultado);
+        return;
+    }
+
+    absolute_time_t limite = make_timeout_time_ms(10000);
+
+    while (!dns_finalizado && !time_reached(limite)) {
+        sleep_ms(100);
+    }
+
+    if (dns_finalizado && dns_sucesso) {
+        printf("[ThingsBoard] DNS resolvido com sucesso!\n");
+    } else {
+        printf("[ThingsBoard] Falha ao resolver servidor.\n");
+    }
+}
+
+static void enviar_telemetria_teste(
+    float temperatura,
+    float umidade,
+    float peso
+)
+{
+    char corpo[128];
+
+    int tamanho_corpo = snprintf(
+        corpo,
+        sizeof(corpo),
+        "{\"temperature\":%.1f,\"humidity\":%.1f,\"weight\":%.2f}",
+        (double)temperatura,
+        (double)umidade,
+        (double)peso
+    );
+
+    if (tamanho_corpo < 0 ||
+        tamanho_corpo >= (int)sizeof(corpo)) {
+        printf("[ThingsBoard] Erro ao montar JSON.\n");
+        return;
+    }
+
+    char requisicao[512];
+
+    int tamanho_requisicao = snprintf(
+        requisicao,
+        sizeof(requisicao),
+        "POST /api/v1/%s/telemetry HTTP/1.1\r\n"
+        "Host: %s\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: %d\r\n"
+        "Connection: close\r\n"
+        "\r\n"
+        "%s",
+        THINGSBOARD_TOKEN,
+        THINGSBOARD_HOST,
+        tamanho_corpo,
+        corpo
+    );
+
+    if (tamanho_requisicao < 0 ||
+        tamanho_requisicao >= (int)sizeof(requisicao)) {
+        printf("[ThingsBoard] Erro ao montar requisicao.\n");
+        return;
+    }
+
+    printf(
+        "[ThingsBoard] Enviando: temperatura=%.1f, "
+        "umidade=%.1f, peso=%.2f\n",
+        (double)temperatura,
+        (double)umidade,
+        (double)peso
+    );
+
+    bool resultado = run_tls_client_test(
+        THINGSBOARD_ROOT_CA,
+        sizeof(THINGSBOARD_ROOT_CA),
+        &endereco_tb,
+        THINGSBOARD_HOST,
+        requisicao,
+        15
+        );
+
+    if (!resultado) {
+        printf("[ThingsBoard] Falha na conexao TLS/HTTPS.\n");
+    }
+}
+
 int main()
 {
     // Inicializa as entradas e saídas padrão, permitindo a comunicação serial com o computador.
@@ -27,32 +157,76 @@ int main()
 
     // Aguarda 1 segundo para permitir a inicialização
     // da comunicação serial antes de começar as leituras.
-    sleep_ms(1000);
+    sleep_ms(5000);
+
+    // ETAPA 1: conectar a placa ao Wi-Fi (sem enviar telemetria ainda).
+    // Esta configuracao atende a redes WPA2-Personal, com SSID e senha.
+    // Redes WPA2-Enterprise/802.1X (login institucional) exigem
+    // outra implementacao e nao funcionam com esta chamada.
+    printf("[Wi-Fi] Inicializando controlador...\n");
+    int wifi_init_result = cyw43_arch_init();
+    if (wifi_init_result != 0) {
+        printf("[Wi-Fi] Falha ao inicializar: %d\n", wifi_init_result);
+    } else {
+        cyw43_arch_enable_sta_mode();
+
+        printf("[Wi-Fi] Conectando a %s...\n", WIFI_SSID);
+
+        int wifi_result = cyw43_arch_wifi_connect_timeout_ms(
+            WIFI_SSID,
+            WIFI_PASSWORD,
+            CYW43_AUTH_WPA2_AES_PSK,
+            30000
+        );
+
+        // Mostra o resultado da tentativa de conexao
+        printf("[Wi-Fi] Resultado da conexao: %d\n", wifi_result);
+
+        if (wifi_result == 0) {
+            printf("[Wi-Fi] Conectado com sucesso!\n");
+
+            // Testa a resolucao DNS do ThingsBoard
+
+        } else {
+            printf("[Wi-Fi] Falha ao conectar!\n");
+            printf("[Wi-Fi] Codigo do erro: %d\n", wifi_result);
+        }
+
+    }
 
     // Declara as estruturas que armazenam os dados
     // e as configurações de cada sensor.
-    DHT22_Data dht22;
-    DS18B20_Data ds18b20;
+    DHT22_Data dht22 = {0};
+    //DS18B20_Data ds18b20;
     HX711_Data hx711;
 
     // Inicializa o sensor DHT22, informando seu pino de dados.
-    // dht22_init(&dht22, DHT22_DATA_PIN);
+    dht22_init(&dht22, DHT22_DATA_PIN);
 
     // Inicializa o DS18B20, informando seu pino de dados.
-    ds18b20_init(&ds18b20, DS18B20_DATA_PIN);
+    //ds18b20_init(&ds18b20, DS18B20_DATA_PIN);
 
     // Inicializa o HX711, informando os pinos DT e SCK.
     // Os dois últimos argumentos (0, 0) dependem da
     // implementação da função no módulo hx711.
     //hx711_init(&hx711, HX711_DT_PIN, HX711_SCK_PIN, HX711_SCALE_FACTOR, HX711_TARA);
 
+    bool dns_teste_executado = false;
+
     while (true) {
 
         // Realiza a leitura de temperatura e umidade do DHT22.
-        // dht22_read(&dht22);
+        bool dht22_ok = dht22_read(&dht22);
+        float temperatura_envio = 0.0f;
+        float umidade_envio = 0.0f;
+
+        if (dht22_ok) {
+            temperatura_envio = dht22.temp_celsius;
+            umidade_envio = dht22.humidity;
+        }
 
         // Obtém a temperatura medida pelo DS18B20.
-        ds18b20_get_temperature(&ds18b20);
+        //ds18b20_get_temperature(&ds18b20);
 
         // Obtém o peso medido pela célula de carga
         // através do conversor HX711.
@@ -61,15 +235,83 @@ int main()
 
         printf("===============================\n");
         printf("Relatório de Sensores:\n");
+        if (dht22_ok)
+        {
+            printf("DHT22 - Temperatura: %.1f °C\n",(double)temperatura_envio);
+            printf("DHT22 - Umidade: %.1f %%\n",(double)umidade_envio);
+        } else {
+            printf("[DHT22] Falha na leitura.\n");
+            printf("Enviando zeros temporariamente.\n");
+        }
+        
         // printf("DHT22 - Temperatura: %.1f °C, Umidade: %.1f %%\n",dht22.temp_celsius,dht22.humidity);
         // printf("DHT22_17 - Temperatura: %.1f °C, Umidade: %.1f %%\n",dht22_17.temp_celsius,dht22_17.humidity);
-        printf("DS18B20 - Temperatura: %.1f °C\n", ds18b20.current_temp);
+        //printf("DS18B20 - Temperatura: %.1f °C\n", ds18b20.current_temp);
         //printf("HX711 - Current Count: %d\n", hx711.current_count);
         //printf("HX711 - Tara: %d \n", hx711.tara_count);
         //printf("HX711 - Scale Factor: %f \n", hx711.scale_factor);
         //printf("HX711 - Weight: %.2f g\n", hx711.weight);
+        if (wifi_init_result == 0) {
+            int status = cyw43_tcpip_link_status(
+            &cyw43_state,
+            CYW43_ITF_STA
+            );
+
+            if (status == CYW43_LINK_UP) {
+                printf("[Wi-Fi] Conectado com IP!\n");
+
+                if (!dns_teste_executado) {
+                printf("[ThingsBoard] Iniciando teste DNS...\n");
+
+                testar_conexao_thingsboard();
+
+                    if (dns_sucesso) {
+                        dns_teste_executado = true;
+                        printf("[ThingsBoard] DNS confirmado.\n");
+                    } else {
+                    printf("[ThingsBoard] DNS falhou; tentaremos novamente.\n");
+                    }
+                }
+
+                if (dns_teste_executado) {
+                    enviar_telemetria_teste(
+                    temperatura_envio,
+                    umidade_envio,
+                    0.0f
+                );
+                }
+
+            } else {
+                printf("[Wi-Fi] Status: %d\n", status);
+                printf("[Wi-Fi] Tentando reconectar...\n");
+
+                int reconexao = cyw43_arch_wifi_connect_timeout_ms(
+                    WIFI_SSID,
+                    WIFI_PASSWORD,
+                    CYW43_AUTH_WPA2_AES_PSK,
+                    10000
+                );
+
+                printf("[Wi-Fi] Resultado da reconexao: %d\n", reconexao);
+
+                if (reconexao == 0) {
+                    printf("[Wi-Fi] Reconectado com sucesso!\n");
+
+                    dns_teste_executado = false;
+                    dns_sucesso = false;
+                } else {
+                    printf("[Wi-Fi] Reconexao falhou; tentaremos novamente.\n");
+                }
+            }
+
+        } else {
+            printf("[Wi-Fi] Falha na inicializacao!\n");
+        }
+
         printf("===============================\n");
-        
-        sleep_ms(100);
+
+        printf("[DEBUG] Fim do ciclo; aguardando 5 segundos.\n");
+        sleep_ms(5000);
+        printf("[DEBUG] Fim da espera; iniciando proximo ciclo.\n");
     }
 }

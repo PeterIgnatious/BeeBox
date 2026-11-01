@@ -1,2 +1,5 @@
 build
 !.vscode/*
+
+# Credenciais Wi-Fi locais: nao versionar
+wifi_config.h

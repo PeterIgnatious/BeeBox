@@ -1,0 +1,25 @@
+BEEBOX - ETAPA 1 (TESTE WIFI)
+=============================
+Objetivo: conectar a BitDogLab (Pico W) ao Wi-Fi e manter a leitura
+DS18B20 no monitor serial. NESTA ETAPA NAO E ENVIADA TELEMETRIA.
+
+Arquivos alterados: main.c, CMakeLists.txt, .gitignore
+Arquivos novos: wifi_config.h, lwipopts.h, INSTRUCOES_WIFI.txt
+
+PASSOS
+1. Abra a pasta BeeBox-main no VS Code (extensao Raspberry Pi Pico).
+2. Edite wifi_config.h com o nome e senha da rede Wi-Fi.
+3. Confirme que a placa esta selecionada como pico_w.
+4. Reconfigure o CMake (se necessario) e compile o projeto.
+5. Grave o UF2 e abra o monitor serial USB.
+6. Procure '[Wi-Fi] Conectado!' junto das leituras DS18B20.
+
+ATENCAO: o teste somente funciona com redes WPA2-Personal (senha
+compartilhada). Para WPA2-Enterprise/802.1X (usuario, senha e/ou
+certificado institucional) ou captive portal, e preciso uma estrategia
+especifica ou uma rede de teste autorizada compatível.
+
+SEGURANCA
+- Nao envie os valores de WIFI_PASSWORD nem os tokens ThingsBoard.
+- O .gitignore foi atualizado para nao versionar wifi_config.h.
+- Este teste nao prova comunicacao com o ThingsBoard.
