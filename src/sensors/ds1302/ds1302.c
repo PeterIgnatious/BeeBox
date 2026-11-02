@@ -151,3 +151,19 @@ void ds1302_halt(DS1302_Data* sensor) {
     prepare_write(sensor, REG_SECONDS);
     write_byte(sensor, 0b10000000);
 }
+
+void ds1302_get_timestamp(DS1302_Data* sensor, char* timestamp) {
+    ds1302_get_datetime(sensor);
+    char timestamp[20];
+    snprintf(
+        timestamp,
+        sizeof(timestamp),
+        "%04d-%02d-%02d %02d:%02d:%02d",
+        2000 + sensor->year,
+        sensor->month,
+        sensor->day,
+        sensor->hour,
+        sensor->minutes,
+        sensor->seconds
+    );
+}

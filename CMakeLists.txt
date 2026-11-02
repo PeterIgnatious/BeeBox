@@ -44,7 +44,12 @@ add_executable(beebox
     src/sensors/hx711/hx711.c
     src/sensors/ds1302/ds1302.c
     src/utils/utils.c
+    src/sensors/microsd/hw_config.c
+    src/sensors/microsd/microsd.c
 )
+
+# Tell CMake where to find the executable source file
+add_subdirectory(lib/no-OS-FatFS-SD-SPI-RPi-Pico/FatFs_SPI build)
 
 pico_set_program_name(beebox "beebox")
 pico_set_program_version(beebox "0.1")
@@ -56,6 +61,7 @@ pico_enable_stdio_usb(beebox 1)
 # Add the standard library to the build
 target_link_libraries(beebox
         pico_stdlib
+        FatFs_SPI
 )
 
 # Add the standard include files to the build
@@ -67,6 +73,7 @@ target_include_directories(beebox PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/src/sensors/mpu6050
         ${CMAKE_CURRENT_LIST_DIR}/src/sensors/hx711
         ${CMAKE_CURRENT_LIST_DIR}/src/sensors/ds1302
+        ${CMAKE_CURRENT_LIST_DIR}/src/sensors/microsd
         ${CMAKE_CURRENT_LIST_DIR}/src/utils
         ${CMAKE_CURRENT_LIST_DIR}/src/network
         ${CMAKE_CURRENT_LIST_DIR}/src/network/tls_config

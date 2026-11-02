@@ -11,6 +11,7 @@
 #include "ds18b20.h"
 #include "hx711.h"
 #include "ds1302.h"
+#include "microsd.h"
 
 // Includes para a conexão ao thingsboard
 #include <stdbool.h>
@@ -24,6 +25,10 @@ const uint DHT22_DATA_PIN = 20;  // Pino de dados do DHT22
 const uint DS18B20_DATA_PIN = 17; // Pino de dados do DS18B20
 const uint HX711_DT_PIN = 18;    // Pino DT: saída de dados do HX711
 const uint HX711_SCK_PIN = 19;   // Pino SCK: sinal de clock do HX711
+const uint DS1302_CLK_PIN = 16;   // Pino CLK: sinal de clock do DS1302
+const uint DS1302_DATA_PIN = 15;
+const uint DS1302_RST_PIN = 14;   // Pino RST: sinal de reset do DS1302
+const uint SDCARD_CS_PIN = 13;   // Pino CS: Chip Select do cartão SD
 const uint HX711_TARA = 8690395;
 const float HX711_SCALE_FACTOR = 424;
 
@@ -197,19 +202,30 @@ int main()
     // Declara as estruturas que armazenam os dados
     // e as configurações de cada sensor.
     DHT22_Data dht22 = {0};
-    //DS18B20_Data ds18b20;
+    DS18B20_Data ds18b20;
     HX711_Data hx711;
+    DS1302_Data ds1302;
 
     // Inicializa o sensor DHT22, informando seu pino de dados.
     dht22_init(&dht22, DHT22_DATA_PIN);
 
     // Inicializa o DS18B20, informando seu pino de dados.
-    //ds18b20_init(&ds18b20, DS18B20_DATA_PIN);
+    ds18b20_init(&ds18b20, DS18B20_DATA_PIN);
 
     // Inicializa o HX711, informando os pinos DT e SCK.
     // Os dois últimos argumentos (0, 0) dependem da
     // implementação da função no módulo hx711.
-    //hx711_init(&hx711, HX711_DT_PIN, HX711_SCK_PIN, HX711_SCALE_FACTOR, HX711_TARA);
+    hx711_init(&hx711, HX711_DT_PIN, HX711_SCK_PIN, HX711_SCALE_FACTOR, HX711_TARA);
+
+    // Inicializa o DS1302, informando os pinos CLK, DATA e RST.
+    ds1302_init(&ds1302, DS1302_DATA_PIN, DS1302_CLK_PIN, DS1302_RST_PIN);
+
+    if (sd_card_init()) {
+        printf("[SD Card] Inicializacao bem-sucedida.\n");
+    } else {
+        printf("[SD Card] Falha na inicializacao.\n");
+        while (1);
+    }
 
     bool dns_teste_executado = false;
 
@@ -217,40 +233,51 @@ int main()
 
         // Realiza a leitura de temperatura e umidade do DHT22.
         bool dht22_ok = dht22_read(&dht22);
-        float temperatura_envio = 0.0f;
+        float temperatura_ds18b20 = 0.0f;
+        float temperatura_dht22 = 0.0f;
         float umidade_envio = 0.0f;
+        float peso_envio = 0.0f;
+        char timestamp[20];
+        char data_buffer[128];
 
         if (dht22_ok) {
-            temperatura_envio = dht22.temp_celsius;
+            temperatura_dht22 = dht22.temp_celsius;
             umidade_envio = dht22.humidity;
         }
 
         // Obtém a temperatura medida pelo DS18B20.
-        //ds18b20_get_temperature(&ds18b20);
+        ds18b20_get_temperature(&ds18b20);
 
         // Obtém o peso medido pela célula de carga
         // através do conversor HX711.
-        //hx711_get_weight(&hx711, 50);
-        // dht22_read(&dht22);
+        hx711_get_weight(&hx711, 50);
 
+        ds1302_get_timestamp(&ds1302, timestamp);
+
+        snprintf(
+            data_buffer,
+            sizeof(data_buffer),
+            "%s,%.1f,%.1f,%.1f,%.2f\n",
+            timestamp,
+            (double)ds18b20.current_temp,
+            (double)dht22.temp_celsius,
+            (double)dht22.humidity,
+            (double)hx711.weight
+        );
+
+        sd_card_write(data_buffer);
+        
         printf("===============================\n");
         printf("Relatório de Sensores:\n");
         if (dht22_ok)
         {
-            printf("DHT22 - Temperatura: %.1f °C\n",(double)temperatura_envio);
+            printf("DHT22 - Temperatura: %.1f °C\n",(double)temperatura_dht22);
             printf("DHT22 - Umidade: %.1f %%\n",(double)umidade_envio);
         } else {
             printf("[DHT22] Falha na leitura.\n");
             printf("Enviando zeros temporariamente.\n");
         }
         
-        // printf("DHT22 - Temperatura: %.1f °C, Umidade: %.1f %%\n",dht22.temp_celsius,dht22.humidity);
-        // printf("DHT22_17 - Temperatura: %.1f °C, Umidade: %.1f %%\n",dht22_17.temp_celsius,dht22_17.humidity);
-        //printf("DS18B20 - Temperatura: %.1f °C\n", ds18b20.current_temp);
-        //printf("HX711 - Current Count: %d\n", hx711.current_count);
-        //printf("HX711 - Tara: %d \n", hx711.tara_count);
-        //printf("HX711 - Scale Factor: %f \n", hx711.scale_factor);
-        //printf("HX711 - Weight: %.2f g\n", hx711.weight);
         if (wifi_init_result == 0) {
             int status = cyw43_tcpip_link_status(
             &cyw43_state,
@@ -275,7 +302,7 @@ int main()
 
                 if (dns_teste_executado) {
                     enviar_telemetria_teste(
-                    temperatura_envio,
+                    temperatura_dht22,
                     umidade_envio,
                     0.0f
                 );
