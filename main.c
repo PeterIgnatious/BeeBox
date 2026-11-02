@@ -231,7 +231,6 @@ int main()
 
     while (true) {
 
-        // Realiza a leitura de temperatura e umidade do DHT22.
         bool dht22_ok = dht22_read(&dht22);
         float temperatura_ds18b20 = 0.0f;
         float temperatura_dht22 = 0.0f;
