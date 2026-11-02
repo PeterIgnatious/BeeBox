@@ -40,12 +40,12 @@ void ds1302_init(DS1302_Data* sensor, uint8_t dat_pin, uint8_t clk_pin, uint8_t 
     gpio_put(sensor->dat_pin, 0);
     
     gpio_init(sensor->clk_pin);
-    gpio_set_dir(sensor->dat_pin, GPIO_OUT);
+    gpio_set_dir(sensor->clk_pin, GPIO_OUT);
     gpio_put(sensor->clk_pin, 0);
     
     gpio_init(sensor->rst_pin);
-    gpio_set_dir(sensor->dat_pin, GPIO_OUT);
-    gpio_put(sensor->clk_pin, 0);
+    gpio_set_dir(sensor->rst_pin, GPIO_OUT);
+    gpio_put(sensor->rst_pin, 0);
 }
 
 
@@ -83,6 +83,7 @@ void ds1302_get_datetime(DS1302_Data* sensor) {
     sensor->month       = bcd2dec(ds1302_read_byte(sensor) & 0b00011111);
     sensor->day_of_week = bcd2dec(ds1302_read_byte(sensor) & 0b00000111);
     sensor->year        = bcd2dec(ds1302_read_byte(sensor) & 0b01111111);
+    gpio_put(sensor->rst_pin, 0);
 }
 
 
@@ -93,7 +94,6 @@ void write_byte(DS1302_Data* sensor, uint8_t byte) {
         byte >>= 1;
         next_bit(sensor);
     }
-    gpio_put(sensor->rst_pin, 0);
 }
 
 
@@ -104,7 +104,6 @@ uint8_t ds1302_read_byte(DS1302_Data* sensor) {
         if (gpio_get(sensor->dat_pin)) byte |= 0x01 << i;
         next_bit(sensor);
     }
-    gpio_put(sensor->rst_pin, 0);
     return byte;
 }
 
@@ -156,9 +155,9 @@ void ds1302_get_timestamp(DS1302_Data* sensor, char* timestamp) {
     ds1302_get_datetime(sensor);
     snprintf(
         timestamp,
-        sizeof(timestamp),
+        30,
         "%04d-%02d-%02d %02d:%02d:%02d",
-        2000 + sensor->year,
+        sensor->year + 2000,
         sensor->month,
         sensor->day,
         sensor->hour,

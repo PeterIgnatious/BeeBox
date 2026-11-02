@@ -56,9 +56,12 @@ void init_procedure(DS18B20_Data* sensor) {
     // Libera o pino para que o DS18B20 possa responder.
     gpio_set_dir(sensor->pin, GPIO_IN);
     sleep_us(20);
-
+    
+    uint32_t start = millis();
     // Aguarda a linha voltar ao nível alto após a resposta.
-    while (gpio_get(sensor->pin));
+    while (gpio_get(sensor->pin)) {
+        if ((millis() - start) > 1) break;
+    };
 
     // Aguarda o término do intervalo de reset.
     sleep_us(490);

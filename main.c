@@ -21,15 +21,14 @@
 #include "globalsign_root_r46.h"
 
 // Definição dos pinos GPIO utilizados pelos sensores
-const uint DHT22_DATA_PIN = 20;  // Pino de dados do DHT22
-const uint DS18B20_DATA_PIN = 17; // Pino de dados do DS18B20
-const uint HX711_DT_PIN = 18;    // Pino DT: saída de dados do HX711
-const uint HX711_SCK_PIN = 19;   // Pino SCK: sinal de clock do HX711
-const uint DS1302_CLK_PIN = 16;   // Pino CLK: sinal de clock do DS1302
-const uint DS1302_DATA_PIN = 15;
-const uint DS1302_RST_PIN = 14;   // Pino RST: sinal de reset do DS1302
-const uint SDCARD_CS_PIN = 13;   // Pino CS: Chip Select do cartão SD
-const uint HX711_TARA = 8690395;
+const uint DHT22_DATA_PIN = 18;  // Pino de dados do DHT22
+const uint DS18B20_DATA_PIN = 8; // Pino de dados do DS18B20
+const uint HX711_DT_PIN = 16;    // Pino DT: saída de dados do HX711
+const uint HX711_SCK_PIN = 17;   // Pino SCK: sinal de clock do HX711
+const uint DS1302_CLK_PIN = 20;   // Pino CLK: sinal de clock do DS1302
+const uint DS1302_DATA_PIN = 4;
+const uint DS1302_RST_PIN = 9;   // Pino RST: sinal de reset do DS1302
+const uint HX711_TARA = 8693267;
 const float HX711_SCALE_FACTOR = 424;
 
 
@@ -162,7 +161,15 @@ int main()
 
     // Aguarda 1 segundo para permitir a inicialização
     // da comunicação serial antes de começar as leituras.
-    sleep_ms(5000);
+    sleep_ms(3000);
+    printf("Iniciando BITDOG...\n");
+    sleep_ms(3000);
+
+    if (sd_card_init() == 1) {
+        printf("[SD Card] Inicializacao bem-sucedida.\n");
+    } else {
+        printf("[SD Card] Falha na inicializacao.\n");
+    }
 
     // ETAPA 1: conectar a placa ao Wi-Fi (sem enviar telemetria ainda).
     // Esta configuracao atende a redes WPA2-Personal, com SSID e senha.
@@ -220,17 +227,10 @@ int main()
     // Inicializa o DS1302, informando os pinos CLK, DATA e RST.
     ds1302_init(&ds1302, DS1302_DATA_PIN, DS1302_CLK_PIN, DS1302_RST_PIN);
 
-    if (sd_card_init()) {
-        printf("[SD Card] Inicializacao bem-sucedida.\n");
-    } else {
-        printf("[SD Card] Falha na inicializacao.\n");
-        while (1);
-    }
-
     bool dns_teste_executado = false;
 
-    while (true) {
 
+    while (true) {
         bool dht22_ok = dht22_read(&dht22);
         float temperatura_ds18b20 = 0.0f;
         float temperatura_dht22 = 0.0f;
@@ -246,12 +246,24 @@ int main()
 
         // Obtém a temperatura medida pelo DS18B20.
         ds18b20_get_temperature(&ds18b20);
+        printf("DS18B20: %.2f\n", ds18b20.current_temp);
+        sleep_ms(2000);
+        printf("DHT22: %.2f C, %.2f \n", temperatura_dht22, umidade_envio);
+        sleep_ms(2000);
+        printf("HX711 - Current Count: %d\n", hx711.current_count);
+        printf("HX711 - Tara: %d \n", hx711.tara_count);
+        printf("HX711 - Scale Factor: %f \n", hx711.scale_factor);
+        printf("HX711 - Weight: %.2f g\n", hx711.weight);
+        sleep_ms(2000);
 
         // Obtém o peso medido pela célula de carga
         // através do conversor HX711.
-        hx711_get_weight(&hx711, 50);
-
+        hx711_get_weight(&hx711, 10);
+        printf("Obtendo timestamp\n");
+        sleep_ms(1000);
         ds1302_get_timestamp(&ds1302, timestamp);
+        printf("%s\n", timestamp);
+        sleep_ms(1000);
 
         snprintf(
             data_buffer,
@@ -264,7 +276,7 @@ int main()
             (double)hx711.weight
         );
 
-        sd_card_write(data_buffer);
+        //sd_card_write("Pedro é Lindo\n");
         
         printf("===============================\n");
         printf("Relatório de Sensores:\n");
