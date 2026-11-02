@@ -49,7 +49,7 @@ add_executable(beebox
 )
 
 # Tell CMake where to find the executable source file
-add_subdirectory(lib/no-OS-FatFS-SD-SPI-RPi-Pico/FatFs_SPI build)
+add_subdirectory(lib/FatFs_SPI build)
 
 pico_set_program_name(beebox "beebox")
 pico_set_program_version(beebox "0.1")

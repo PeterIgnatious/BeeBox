@@ -17,5 +17,6 @@ typedef struct {
 } DS1302_Data;
 
 void ds1302_init(DS1302_Data* sensor, uint8_t dat_pin, uint8_t clk_pin, uint8_t rst_pin);
+void ds1302_get_timestamp(DS1302_Data* sensor, char* timestamp);
 
 #endif

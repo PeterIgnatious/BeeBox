@@ -154,7 +154,6 @@ void ds1302_halt(DS1302_Data* sensor) {
 
 void ds1302_get_timestamp(DS1302_Data* sensor, char* timestamp) {
     ds1302_get_datetime(sensor);
-    char timestamp[20];
     snprintf(
         timestamp,
         sizeof(timestamp),
