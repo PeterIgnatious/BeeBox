@@ -2,6 +2,7 @@
 #define HX711_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef struct {
     uint8_t dt_pin;
@@ -12,11 +13,18 @@ typedef struct {
     float weight;
 } HX711_Data;
 
-void hx711_init(HX711_Data* sensor, uint8_t dt_pin, uint8_t sck_pin, float scale_factor, uint32_t tara_count);
+void hx711_init(
+    HX711_Data* sensor,
+    uint8_t dt_pin,
+    uint8_t sck_pin,
+    float scale_factor,
+    uint32_t tara_count
+);
+
 void hx711_get_tara(HX711_Data* sensor);
-void hx711_get_weight(HX711_Data* sensor, int samples);
-void hx711_read_count(HX711_Data* sensor);
-void hx711_get_average_count(HX711_Data* sensor, int samples);
+bool hx711_get_weight(HX711_Data* sensor, int samples);
+bool hx711_read_count(HX711_Data* sensor);
+bool hx711_get_average_count(HX711_Data* sensor, int samples);
 void hx711_get_scale_factor(HX711_Data* sensor, int weight);
 
 #endif

@@ -37,6 +37,7 @@ pico_sdk_init()
 
 add_executable(beebox 
     main.c
+    src/network/thingsboard.c
     src/network/thingsboard_tls.c
     src/sensors/dht22/dht22.c
     src/sensors/mpu6050/mpu6050.c

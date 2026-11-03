@@ -75,12 +75,16 @@ static err_t tls_client_poll(void *arg, struct altcp_pcb *pcb) {
 }
 
 static void tls_client_err(void *arg, err_t err) {
+
     TLS_CLIENT_T *state = (TLS_CLIENT_T *)arg;
 
-    printf("tls_client_err %d\n", err);
+    printf("[HTTPS] Erro na conexao TLS: %d\n", err);
+
+    // O lwIP já liberou o PCB quando este callback é chamado.
+    state->pcb = NULL;
 
     state->error = PICO_ERROR_GENERIC;
-    tls_client_close(state);
+    state->complete = true;
 }
 
 static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, err_t err) {

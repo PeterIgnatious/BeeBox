@@ -12,147 +12,20 @@
 #include "hx711.h"
 #include "ds1302.h"
 #include "microsd.h"
+#include "thingsboard.h"
 
-// Includes para a conexão ao thingsboard
 #include <stdbool.h>
-#include "lwip/dns.h"
-#include "thingsboard_tls.h"
-#include "thingsboard_config.h"
-#include "globalsign_root_r46.h"
-
 // Definição dos pinos GPIO utilizados pelos sensores
-const uint DHT22_DATA_PIN = 18;  // Pino de dados do DHT22
+const uint DHT22_DATA_PIN = 3;  // Pino de dados do DHT22
 const uint DS18B20_DATA_PIN = 8; // Pino de dados do DS18B20
-const uint HX711_DT_PIN = 16;    // Pino DT: saída de dados do HX711
-const uint HX711_SCK_PIN = 17;   // Pino SCK: sinal de clock do HX711
+const uint HX711_DT_PIN = 5;    // Pino DT: saída de dados do HX711
+const uint HX711_SCK_PIN = 6;   // Pino SCK: sinal de clock do HX711
 const uint DS1302_CLK_PIN = 20;   // Pino CLK: sinal de clock do DS1302
 const uint DS1302_DATA_PIN = 4;
 const uint DS1302_RST_PIN = 9;   // Pino RST: sinal de reset do DS1302
 const uint HX711_TARA = 8693267;
 const float HX711_SCALE_FACTOR = 424;
 
-
-static volatile bool dns_finalizado = false;
-static volatile bool dns_sucesso = false;
-static ip_addr_t endereco_tb;
-
-static void resposta_dns(const char *nome,
-                         const ip_addr_t *ip,
-                         void *arg) {
-    if (ip != NULL) {
-        endereco_tb = *ip;
-        dns_sucesso = true;
-    }
-
-    dns_finalizado = true;
-}
-
-void testar_conexao_thingsboard() {
-    printf("[ThingsBoard] Procurando servidor...\n");
-
-    dns_finalizado = false;
-    dns_sucesso = false;
-
-    cyw43_arch_lwip_begin();
-
-    err_t resultado = dns_gethostbyname(
-        "tb.cin.ufpe.br",
-        &endereco_tb,
-        resposta_dns,
-        NULL
-    );
-
-    cyw43_arch_lwip_end();
-
-    if (resultado == ERR_OK) {
-        dns_sucesso = true;
-        dns_finalizado = true;
-    } else if (resultado != ERR_INPROGRESS) {
-        printf("[ThingsBoard] Erro DNS: %d\n", resultado);
-        return;
-    }
-
-    absolute_time_t limite = make_timeout_time_ms(10000);
-
-    while (!dns_finalizado && !time_reached(limite)) {
-        sleep_ms(100);
-    }
-
-    if (dns_finalizado && dns_sucesso) {
-        printf("[ThingsBoard] DNS resolvido com sucesso!\n");
-    } else {
-        printf("[ThingsBoard] Falha ao resolver servidor.\n");
-    }
-}
-
-static void enviar_telemetria_teste(
-    float temperatura,
-    float umidade,
-    float peso
-)
-{
-    char corpo[128];
-
-    int tamanho_corpo = snprintf(
-        corpo,
-        sizeof(corpo),
-        "{\"temperature\":%.1f,\"humidity\":%.1f,\"weight\":%.2f}",
-        (double)temperatura,
-        (double)umidade,
-        (double)peso
-    );
-
-    if (tamanho_corpo < 0 ||
-        tamanho_corpo >= (int)sizeof(corpo)) {
-        printf("[ThingsBoard] Erro ao montar JSON.\n");
-        return;
-    }
-
-    char requisicao[512];
-
-    int tamanho_requisicao = snprintf(
-        requisicao,
-        sizeof(requisicao),
-        "POST /api/v1/%s/telemetry HTTP/1.1\r\n"
-        "Host: %s\r\n"
-        "Content-Type: application/json\r\n"
-        "Content-Length: %d\r\n"
-        "Connection: close\r\n"
-        "\r\n"
-        "%s",
-        THINGSBOARD_TOKEN,
-        THINGSBOARD_HOST,
-        tamanho_corpo,
-        corpo
-    );
-
-    if (tamanho_requisicao < 0 ||
-        tamanho_requisicao >= (int)sizeof(requisicao)) {
-        printf("[ThingsBoard] Erro ao montar requisicao.\n");
-        return;
-    }
-
-    printf(
-        "[ThingsBoard] Enviando: temperatura=%.1f, "
-        "umidade=%.1f, peso=%.2f\n",
-        (double)temperatura,
-        (double)umidade,
-        (double)peso
-    );
-
-    bool resultado = run_tls_client_test(
-        THINGSBOARD_ROOT_CA,
-        sizeof(THINGSBOARD_ROOT_CA),
-        &endereco_tb,
-        THINGSBOARD_HOST,
-        requisicao,
-        15
-        );
-
-    if (!resultado) {
-        printf("[ThingsBoard] Falha na conexao TLS/HTTPS.\n");
-    }
-}
 
 int main()
 {
@@ -162,27 +35,27 @@ int main()
     // Aguarda 1 segundo para permitir a inicialização
     // da comunicação serial antes de começar as leituras.
     sleep_ms(3000);
-    printf("Iniciando BITDOG...\n");
+    // printf("Iniciando BITDOG...\n");
     sleep_ms(3000);
 
     if (sd_card_init() == 1) {
-        printf("[SD Card] Inicializacao bem-sucedida.\n");
+        // printf("[SD Card] Inicializacao bem-sucedida.\n");
     } else {
-        printf("[SD Card] Falha na inicializacao.\n");
+        // printf("[SD Card] Falha na inicializacao.\n");
     }
 
     // ETAPA 1: conectar a placa ao Wi-Fi (sem enviar telemetria ainda).
     // Esta configuracao atende a redes WPA2-Personal, com SSID e senha.
     // Redes WPA2-Enterprise/802.1X (login institucional) exigem
     // outra implementacao e nao funcionam com esta chamada.
-    printf("[Wi-Fi] Inicializando controlador...\n");
+    // printf("[Wi-Fi] Inicializando controlador...\n");
     int wifi_init_result = cyw43_arch_init();
     if (wifi_init_result != 0) {
-        printf("[Wi-Fi] Falha ao inicializar: %d\n", wifi_init_result);
+        // printf("[Wi-Fi] Falha ao inicializar: %d\n", wifi_init_result);
     } else {
         cyw43_arch_enable_sta_mode();
 
-        printf("[Wi-Fi] Conectando a %s...\n", WIFI_SSID);
+        // printf("[Wi-Fi] Conectando a %s...\n", WIFI_SSID);
 
         int wifi_result = cyw43_arch_wifi_connect_timeout_ms(
             WIFI_SSID,
@@ -192,7 +65,7 @@ int main()
         );
 
         // Mostra o resultado da tentativa de conexao
-        printf("[Wi-Fi] Resultado da conexao: %d\n", wifi_result);
+        // printf("[Wi-Fi] Resultado da conexao: %d\n", wifi_result);
 
         if (wifi_result == 0) {
             printf("[Wi-Fi] Conectado com sucesso!\n");
@@ -210,7 +83,7 @@ int main()
     // e as configurações de cada sensor.
     DHT22_Data dht22 = {0};
     DS18B20_Data ds18b20;
-    HX711_Data hx711;
+    HX711_Data hx711 = {0};
     DS1302_Data ds1302;
 
     // Inicializa o sensor DHT22, informando seu pino de dados.
@@ -227,7 +100,7 @@ int main()
     // Inicializa o DS1302, informando os pinos CLK, DATA e RST.
     ds1302_init(&ds1302, DS1302_DATA_PIN, DS1302_CLK_PIN, DS1302_RST_PIN);
 
-    bool dns_teste_executado = false;
+    bool thingsboard_dns_ok = false;
 
 
     while (true) {
@@ -236,7 +109,7 @@ int main()
         float temperatura_dht22 = 0.0f;
         float umidade_envio = 0.0f;
         float peso_envio = 0.0f;
-        char timestamp[20];
+        char timestamp[30];
         char data_buffer[128];
 
         if (dht22_ok) {
@@ -246,24 +119,30 @@ int main()
 
         // Obtém a temperatura medida pelo DS18B20.
         ds18b20_get_temperature(&ds18b20);
-        printf("DS18B20: %.2f\n", ds18b20.current_temp);
+        // printf("DS18B20: %.2f\n", ds18b20.current_temp);
         sleep_ms(2000);
-        printf("DHT22: %.2f C, %.2f \n", temperatura_dht22, umidade_envio);
+        // printf("DHT22: %.2f C, %.2f \n", temperatura_dht22, umidade_envio);
         sleep_ms(2000);
-        printf("HX711 - Current Count: %d\n", hx711.current_count);
-        printf("HX711 - Tara: %d \n", hx711.tara_count);
-        printf("HX711 - Scale Factor: %f \n", hx711.scale_factor);
-        printf("HX711 - Weight: %.2f g\n", hx711.weight);
-        sleep_ms(2000);
-
-        // Obtém o peso medido pela célula de carga
-        // através do conversor HX711.
-        hx711_get_weight(&hx711, 10);
-        printf("Obtendo timestamp\n");
-        sleep_ms(1000);
+        // Realiza a leitura do peso.
+        bool hx711_ok = hx711_get_weight(&hx711, 10);
+        
+        if (hx711_ok) {
+            peso_envio = hx711.weight;
+            
+            // printf("[HX711] Contagem: %lu\n",(unsigned long)hx711.current_count);
+            // printf("[HX711] Tara: %lu\n",(unsigned long)hx711.tara_count);
+            // printf("[HX711] Fator de escala: %.2f\n",(double)hx711.scale_factor);
+            // printf("[HX711] Peso: %.2f g\n",(double)peso_envio);
+        } else {
+            peso_envio = 0.0f;
+            // printf("[HX711] Leitura indisponivel.\n");
+            // printf("[HX711] Enviando peso=0.00 g.\n");
+        }
+        // printf("Obtendo timestamp\n");
+        // sleep_ms(1000);
         ds1302_get_timestamp(&ds1302, timestamp);
-        printf("%s\n", timestamp);
-        sleep_ms(1000);
+        // printf("%s\n", timestamp);
+        // sleep_ms(1000);
 
         snprintf(
             data_buffer,
@@ -276,17 +155,17 @@ int main()
             (double)hx711.weight
         );
 
-        //sd_card_write("Pedro é Lindo\n");
+        sd_card_write(data_buffer);
         
-        printf("===============================\n");
-        printf("Relatório de Sensores:\n");
+        // printf("===============================\n");
+        // printf("Relatório de Sensores:\n");
         if (dht22_ok)
         {
-            printf("DHT22 - Temperatura: %.1f °C\n",(double)temperatura_dht22);
-            printf("DHT22 - Umidade: %.1f %%\n",(double)umidade_envio);
+            // printf("DHT22 - Temperatura: %.1f °C\n",(double)temperatura_dht22);
+            // printf("DHT22 - Umidade: %.1f %%\n",(double)umidade_envio);
         } else {
-            printf("[DHT22] Falha na leitura.\n");
-            printf("Enviando zeros temporariamente.\n");
+            // printf("[DHT22] Falha na leitura.\n");
+            // printf("Enviando zeros temporariamente.\n");
         }
         
         if (wifi_init_result == 0) {
@@ -296,32 +175,21 @@ int main()
             );
 
             if (status == CYW43_LINK_UP) {
-                printf("[Wi-Fi] Conectado com IP!\n");
-
-                if (!dns_teste_executado) {
-                printf("[ThingsBoard] Iniciando teste DNS...\n");
-
-                testar_conexao_thingsboard();
-
-                    if (dns_sucesso) {
-                        dns_teste_executado = true;
-                        printf("[ThingsBoard] DNS confirmado.\n");
-                    } else {
-                    printf("[ThingsBoard] DNS falhou; tentaremos novamente.\n");
-                    }
+                // printf("[Wi-Fi] Conectado com IP!\n");
+                if (!thingsboard_dns_ok) {
+                    thingsboard_dns_ok = thingsboard_resolver_dns();
                 }
-
-                if (dns_teste_executado) {
-                    enviar_telemetria_teste(
-                    temperatura_dht22,
-                    umidade_envio,
-                    0.0f
-                );
+                if (thingsboard_dns_ok) {
+                    thingsboard_enviar_telemetria(
+                        temperatura_dht22,
+                        ds18b20.current_temp,
+                        umidade_envio,
+                        peso_envio
+                    );
                 }
-
             } else {
-                printf("[Wi-Fi] Status: %d\n", status);
-                printf("[Wi-Fi] Tentando reconectar...\n");
+                // printf("[Wi-Fi] Status: %d\n", status);
+                // printf("[Wi-Fi] Tentando reconectar...\n");
 
                 int reconexao = cyw43_arch_wifi_connect_timeout_ms(
                     WIFI_SSID,
@@ -330,26 +198,24 @@ int main()
                     10000
                 );
 
-                printf("[Wi-Fi] Resultado da reconexao: %d\n", reconexao);
+                // printf("[Wi-Fi] Resultado da reconexao: %d\n", reconexao);
 
                 if (reconexao == 0) {
-                    printf("[Wi-Fi] Reconectado com sucesso!\n");
-
-                    dns_teste_executado = false;
-                    dns_sucesso = false;
+                    // printf("[Wi-Fi] Reconectado com sucesso!\n");
+                    thingsboard_dns_ok = false;
                 } else {
-                    printf("[Wi-Fi] Reconexao falhou; tentaremos novamente.\n");
+                    // printf("[Wi-Fi] Reconexao falhou; tentaremos novamente.\n");
                 }
             }
 
         } else {
-            printf("[Wi-Fi] Falha na inicializacao!\n");
+            // printf("[Wi-Fi] Falha na inicializacao!\n");
         }
 
-        printf("===============================\n");
+        // printf("===============================\n");
 
-        printf("[DEBUG] Fim do ciclo; aguardando 5 segundos.\n");
-        sleep_ms(5000);
-        printf("[DEBUG] Fim da espera; iniciando proximo ciclo.\n");
+        // printf("[DEBUG] Fim do ciclo; aguardando 5 segundos.\n");
+        sleep_ms(60000);
+        // printf("[DEBUG] Fim da espera; iniciando proximo ciclo.\n");
     }
 }

@@ -2,6 +2,7 @@
 #define DHT22_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef struct {
     uint8_t data_pin;
@@ -10,6 +11,6 @@ typedef struct {
 } DHT22_Data;
 
 void dht22_init(DHT22_Data *sensor, uint8_t pin);
-bool dht22_read(DHT22_Data* sensor);
+bool dht22_read(DHT22_Data *sensor);
 
 #endif

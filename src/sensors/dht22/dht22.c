@@ -43,8 +43,8 @@ void start_signal(DHT22_Data* sensor) {
 
 
 // Lê um byte (8 bits) enviado pelo sensor.
-uint8_t read_data(DHT22_Data* sensor) {
-    uint8_t value = 0;
+int read_data(DHT22_Data* sensor) {
+    int value = 0;
 
     for (int i = 0; i < 8; i++) {
 
@@ -61,7 +61,13 @@ uint8_t read_data(DHT22_Data* sensor) {
         }
 
         // Aguarda o fim do pulso alto antes do próximo bit.
-        while (gpio_get(sensor->data_pin) == 1);
+        uint32_t start = millis();
+        while (gpio_get(sensor->data_pin) == 1) {
+            if (millis() - start > TIMEOUT_ERROR) {
+                value = -1;
+                return value;
+            } 
+        }
     }
 
     return value;

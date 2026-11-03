@@ -29,6 +29,8 @@ int sd_card_init() {
 
 
 int sd_card_write(char *data) {
+    gpio_set_dir(13, GPIO_OUT);
+    gpio_put(13, 1);
     fr = f_open(&fil, filename, FA_WRITE | FA_OPEN_APPEND);
     if (fr != FR_OK) {
         printf("ERROR: Falha ao abrir o arquivo para escrita. Código de erro: %d\n", fr);
@@ -48,6 +50,7 @@ int sd_card_write(char *data) {
         return -1;
     }
 
+    gpio_put(13, 0);
     return 1;
 }
 

@@ -1,5 +1,7 @@
+# Diretorio de compilacao
 build
 !.vscode/*
 
-# Credenciais Wi-Fi locais: nao versionar
+# Credenciais locais
 wifi_config.h
+src/network/thingsboard_config.h
