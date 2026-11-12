@@ -1,3 +1,27 @@
-# Diretorio de compilacao
-build
-!.vscode/*
+
+# Build
+build/
+cmake-build-*/
+
+# ESP-IDF
+sdkconfig.old
+sdkconfig.bak
+dependencies.lock
+
+# Logs
+*.log
+
+# VS Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Arquivos temporários
+*.tmp
+*.swp
+*~
