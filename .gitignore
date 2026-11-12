@@ -1,0 +1,3 @@
+# Diretorio de compilacao
+build
+!.vscode/*
