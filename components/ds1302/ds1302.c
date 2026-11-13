@@ -2,207 +2,224 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <time.h>
 
 #include "driver/gpio.h"
 #include "esp_rom_sys.h"
-#include "esp_timer.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 
-#include "ds18b20.h"
-
-// Tempo máximo utilizado na verificação de presença.
-const int PRESENCE_MAX_TIME = 240;
-
-// Comandos do protocolo OneWire.
-const uint8_t READ_ROM = 0x33;
-const uint8_t SKIP_ROM = 0xCC;
-const uint8_t CONVERT_T = 0x44;
-const uint8_t WRITE_SCRATCHPAD = 0x4E;
-const uint8_t READ_SCRATCHPAD = 0xBE;
-
-// Limites de temperatura.
-const uint8_t TEMP_MIN = 0x00;
-const uint8_t TEMP_MAX = 0xFF;
-
-// Configuração de resolução.
-const uint8_t RESOLUTION = 0x7F;
-
-// Tempo de conversão para 12 bits.
-const int CONVERTION_TIME = 750;
-
-// Declaração das funções auxiliares.
-void send_byte(DS18B20_Data* sensor, uint8_t command);
-void send_bit(DS18B20_Data* sensor, bool bit_state);
-uint8_t read_byte(DS18B20_Data* sensor);
-bool read_bit(DS18B20_Data* sensor);
-void read_scratchpad(DS18B20_Data* sensor);
+#include "ds1302.h"
 
 
-// Reset do barramento OneWire.
-void init_procedure(DS18B20_Data* sensor) {
+#define REG_SECONDS  0x80
+#define REG_MINUTES  0x82
+#define REG_HOUR     0x84
+#define REG_DATE     0x86
+#define REG_MONTH    0x88
+#define REG_DAY      0x8A
+#define REG_YEAR     0x8C
+#define REG_WP       0x8E
+#define REG_BURST    0xBE
+#define REG_RAM00    0xC0
+#define REG_RAM01    0xC2
+#define REG_RAM29    0xFA
+#define REG_RAM30    0xFC
+#define REG_RAM_BURST 0xFE
 
-    gpio_set_direction(sensor->pin, GPIO_MODE_OUTPUT);
-    gpio_set_level(sensor->pin, 0);
-    esp_rom_delay_us(490);
 
-    gpio_set_level(sensor->pin, 1);
-    esp_rom_delay_us(60);
+void prepare_write(DS1302_Data *sensor, uint8_t reg);
+void prepare_read(DS1302_Data *sensor, uint8_t reg);
+void write_byte(DS1302_Data *sensor, uint8_t byte);
+uint8_t ds1302_read_byte(DS1302_Data *sensor);
+void next_bit(DS1302_Data *sensor);
+uint8_t dec2bcd(uint8_t dec);
+uint8_t bcd2dec(uint8_t bcd);
 
-    gpio_set_level(sensor->pin, 0);
-    esp_rom_delay_us(10);
 
-    gpio_set_direction(sensor->pin, GPIO_MODE_INPUT);
-    esp_rom_delay_us(20);
+void ds1302_init(
+    DS1302_Data* sensor,
+    uint8_t dat_pin,
+    uint8_t clk_pin,
+    uint8_t rst_pin
+) {
+    sensor->dat_pin = dat_pin;
+    sensor->clk_pin = clk_pin;
+    sensor->rst_pin = rst_pin;
 
-    int64_t start = esp_timer_get_time();
+    gpio_reset_pin(sensor->dat_pin);
+    gpio_set_direction(sensor->dat_pin, GPIO_MODE_OUTPUT);
+    gpio_set_level(sensor->dat_pin, 0);
 
-    while (gpio_get_level(sensor->pin)) {
-        if ((esp_timer_get_time() - start) > 1000) {
-            break;
+    gpio_reset_pin(sensor->clk_pin);
+    gpio_set_direction(sensor->clk_pin, GPIO_MODE_OUTPUT);
+    gpio_set_level(sensor->clk_pin, 0);
+
+    gpio_reset_pin(sensor->rst_pin);
+    gpio_set_direction(sensor->rst_pin, GPIO_MODE_OUTPUT);
+    gpio_set_level(sensor->rst_pin, 0);
+}
+
+
+void ds1302_set_datetime(
+    DS1302_Data* sensor,
+    uint16_t year,
+    uint8_t dow,
+    uint8_t month,
+    uint8_t day,
+    uint8_t hour,
+    uint8_t minute,
+    uint8_t second
+) {
+    prepare_write(sensor, REG_WP);
+    write_byte(sensor, 0b00000000);
+
+    prepare_write(sensor, REG_BURST);
+    write_byte(sensor, dec2bcd(second));
+    write_byte(sensor, dec2bcd(minute));
+    write_byte(sensor, dec2bcd(hour));
+    write_byte(sensor, dec2bcd(day));
+    write_byte(sensor, dec2bcd(month));
+    write_byte(sensor, dec2bcd(dow));
+    write_byte(sensor, dec2bcd(year));
+    write_byte(sensor, 0b00000000);
+}
+
+
+void ds1302_get_datetime(DS1302_Data* sensor) {
+
+    prepare_read(sensor, REG_BURST);
+
+    sensor->seconds =
+        bcd2dec(ds1302_read_byte(sensor) & 0b01111111);
+
+    sensor->minutes =
+        bcd2dec(ds1302_read_byte(sensor) & 0b01111111);
+
+    sensor->hour =
+        bcd2dec(ds1302_read_byte(sensor) & 0b00111111);
+
+    sensor->day =
+        bcd2dec(ds1302_read_byte(sensor) & 0b00111111);
+
+    sensor->month =
+        bcd2dec(ds1302_read_byte(sensor) & 0b00011111);
+
+    sensor->day_of_week =
+        bcd2dec(ds1302_read_byte(sensor) & 0b00000111);
+
+    sensor->year =
+        bcd2dec(ds1302_read_byte(sensor) & 0b01111111);
+
+    gpio_set_level(sensor->rst_pin, 0);
+}
+
+
+void write_byte(DS1302_Data* sensor, uint8_t byte) {
+
+    gpio_set_direction(sensor->dat_pin, GPIO_MODE_OUTPUT);
+
+    for (int i = 0; i < 8; i++) {
+
+        gpio_set_level(sensor->dat_pin, byte & 0x01);
+
+        byte >>= 1;
+
+        next_bit(sensor);
+    }
+}
+
+
+uint8_t ds1302_read_byte(DS1302_Data* sensor) {
+
+    uint8_t byte = 0;
+
+    gpio_set_direction(sensor->dat_pin, GPIO_MODE_INPUT);
+
+    for (int i = 0; i < 8; i++) {
+
+        if (gpio_get_level(sensor->dat_pin)) {
+            byte |= 0x01 << i;
         }
+
+        next_bit(sensor);
     }
 
-    esp_rom_delay_us(490);
+    return byte;
 }
 
 
-// Inicialização do DS18B20.
-bool ds18b20_init(DS18B20_Data* sensor, int ds_pin) {
+void prepare_write(DS1302_Data* sensor, uint8_t reg) {
 
-    sensor->pin = ds_pin;
+    gpio_set_level(sensor->rst_pin, 1);
 
-    gpio_reset_pin(sensor->pin);
+    uint8_t command = 0b10000000 | reg;
 
-    gpio_set_direction(sensor->pin, GPIO_MODE_INPUT_OUTPUT_OD);
-    gpio_set_level(sensor->pin, 1);
-
-    init_procedure(sensor);
-
-    send_byte(sensor, SKIP_ROM);
-
-    send_byte(sensor, WRITE_SCRATCHPAD);
-
-    send_byte(sensor, TEMP_MAX);
-    send_byte(sensor, TEMP_MIN);
-
-    send_byte(sensor, RESOLUTION);
-
-    read_scratchpad(sensor);
-
-    return true;
+    write_byte(sensor, command);
 }
 
 
-// Inicia conversão e lê o scratchpad.
-void read_scratchpad(DS18B20_Data* sensor) {
+void prepare_read(DS1302_Data* sensor, uint8_t reg) {
 
-    init_procedure(sensor);
+    gpio_set_level(sensor->rst_pin, 1);
 
-    send_byte(sensor, SKIP_ROM);
+    uint8_t command = 0b10000001 | reg;
 
-    send_byte(sensor, CONVERT_T);
-
-    vTaskDelay(pdMS_TO_TICKS(CONVERTION_TIME));
-
-    init_procedure(sensor);
-
-    send_byte(sensor, SKIP_ROM);
-    send_byte(sensor, READ_SCRATCHPAD);
-
-    sensor->temp_lsb = read_byte(sensor);
-    sensor->temp_msb = read_byte(sensor);
-
-    sensor->th = read_byte(sensor);
-    sensor->tl = read_byte(sensor);
-
-    sensor->config_reg = read_byte(sensor);
-    sensor->reserved1 = read_byte(sensor);
-    sensor->reserved2 = read_byte(sensor);
-    sensor->reserved3 = read_byte(sensor);
-
-    sensor->crc = read_byte(sensor);
+    write_byte(sensor, command);
 }
 
 
-// Obtém a temperatura.
-void ds18b20_get_temperature(DS18B20_Data* sensor) {
+void next_bit(DS1302_Data* sensor) {
 
-    read_scratchpad(sensor);
-
-    uint16_t value = sensor->temp_lsb |
-                     (sensor->temp_msb << 8);
-
-    float temperature = (int16_t)value * 0.0625f;
-
-    sensor->current_temp = temperature;
-}
-
-
-// Envia um byte pelo barramento OneWire.
-void send_byte(DS18B20_Data* sensor, uint8_t command) {
-
-    for (int i = 0; i < 8; i++) {
-
-        send_bit(sensor, command & 0x01);
-
-        command >>= 1;
-    }
-
-    esp_rom_delay_us(5);
-}
-
-
-// Envia um bit.
-void send_bit(DS18B20_Data* sensor, bool bit_state) {
-
-    gpio_set_direction(sensor->pin, GPIO_MODE_OUTPUT_OD);
-    gpio_set_level(sensor->pin, 0);
-
-    bit_state ? esp_rom_delay_us(5) :
-                esp_rom_delay_us(90);
-
-    // Libera o barramento.
-    gpio_set_level(sensor->pin, 1);
-
-    bit_state ? esp_rom_delay_us(45) :
-                esp_rom_delay_us(10);
-}
-
-
-// Lê um byte.
-uint8_t read_byte(DS18B20_Data* sensor) {
-
-    uint8_t byte_val = 0x00;
-
-    for (int i = 0; i < 8; i++) {
-
-        byte_val |= (read_bit(sensor) << i);
-    }
-
-    return byte_val;
-}
-
-
-// Lê um bit.
-bool read_bit(DS18B20_Data* sensor) {
-
-    bool bit_val = 0;
-
-    gpio_set_direction(sensor->pin, GPIO_MODE_OUTPUT_OD);
-    gpio_set_level(sensor->pin, 0);
+    gpio_set_level(sensor->clk_pin, 1);
 
     esp_rom_delay_us(2);
 
-    // Libera a linha para leitura.
-    gpio_set_level(sensor->pin, 1);
-    gpio_set_direction(sensor->pin, GPIO_MODE_INPUT);
+    gpio_set_level(sensor->clk_pin, 0);
 
     esp_rom_delay_us(2);
+}
 
-    bit_val = gpio_get_level(sensor->pin);
 
-    esp_rom_delay_us(80);
+uint8_t dec2bcd(uint8_t dec) {
 
-    return bit_val;
+    return ((dec / 10 * 16) + (dec % 10));
+}
+
+
+uint8_t bcd2dec(uint8_t bcd) {
+
+    return ((bcd / 16 * 10) + (bcd % 16));
+}
+
+
+bool isHalted(DS1302_Data* sensor) {
+
+    prepare_read(sensor, REG_SECONDS);
+
+    return (ds1302_read_byte(sensor) & 0b10000000);
+}
+
+
+void ds1302_halt(DS1302_Data* sensor) {
+
+    prepare_write(sensor, REG_SECONDS);
+
+    write_byte(sensor, 0b10000000);
+}
+
+
+void ds1302_get_timestamp(DS1302_Data* sensor, char* timestamp) {
+
+    ds1302_get_datetime(sensor);
+
+    snprintf(
+        timestamp,
+        30,
+        "%04d-%02d-%02d %02d:%02d:%02d",
+        sensor->year + 2000,
+        sensor->month,
+        sensor->day,
+        sensor->hour,
+        sensor->minutes,
+        sensor->seconds
+    );
 }
