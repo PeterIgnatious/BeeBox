@@ -10,13 +10,13 @@
 
 #include "hx711.h"
 
-
 // Valor padrão da leitura do HX711 com a balança sem carga adicional (tara).
 const int LOADCELL_TARA_DEFAULT = 8691130;
 
 // Fator de escala padrão, obtido durante a calibração da célula de carga.
 const int LOADCELL_SCALE_FACTOR_DEFAULT = 461;
 
+static const char *TAG = "HX711";
 
 // Inicializa o HX711, configurando os pinos e os parâmetros de calibração.
 void hx711_init(
@@ -26,7 +26,7 @@ void hx711_init(
     float scale_factor,
     uint32_t tara_count
 ) {
-
+    ESP_LOGI(TAG, "Initializing HX711...");
     // Armazena os pinos utilizados pelo sensor.
     sensor->dt_pin = dt_pin;
     sensor->sck_pin = sck_pin;
@@ -56,6 +56,9 @@ void hx711_init(
     gpio_set_level(sensor->sck_pin, 0);
 
     esp_rom_delay_us(20);
+
+    ESP_LOGI(TAG, "HX711 initialized with DT pin: %d, SCK pin: %d, Scale factor: %.2f, Tara count: %d",
+             sensor->dt_pin, sensor->sck_pin, sensor->scale_factor, sensor->tara_count);
 }
 
 

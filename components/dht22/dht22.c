@@ -13,6 +13,9 @@
 // Tempo máximo de espera para detectar uma resposta do sensor.
 const uint32_t TIMEOUT_ERROR = 1000;
 
+// Declara o valor da TAG
+static const char *TAG = "DHT22";
+
 
 // Equivalente à função millis() do Raspberry Pi Pico.
 static uint32_t millis(void) {
@@ -22,6 +25,8 @@ static uint32_t millis(void) {
 
 // Inicializa o sensor e configura o pino de dados.
 void dht22_init(DHT22_Data* sensor, uint8_t pin) {
+    ESP_LOGI(TAG, "Initializing DHT22...");
+
     sensor->data_pin = pin;
 
     gpio_reset_pin((gpio_num_t)sensor->data_pin);
@@ -30,6 +35,8 @@ void dht22_init(DHT22_Data* sensor, uint8_t pin) {
     // Ativa o pull-up interno e mantém a linha em nível alto.
     gpio_pullup_en((gpio_num_t)sensor->data_pin);
     gpio_set_level((gpio_num_t)sensor->data_pin, 1);
+
+    ESP_LOGI(TAG, "DHT22 initialized with data pin: %d", sensor->data_pin);
 }
 
 

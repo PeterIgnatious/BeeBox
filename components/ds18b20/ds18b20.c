@@ -31,6 +31,9 @@ const uint8_t RESOLUTION = 0x7F;
 // Tempo de conversão para 12 bits.
 const int CONVERTION_TIME = 750;
 
+// Define valor de TAG
+static const char *TAG = "DS18B20";
+
 // Declaração das funções auxiliares.
 void send_byte(DS18B20_Data* sensor, uint8_t command);
 void send_bit(DS18B20_Data* sensor, bool bit_state);
@@ -69,6 +72,7 @@ void init_procedure(DS18B20_Data* sensor) {
 
 // Inicialização do DS18B20.
 bool ds18b20_init(DS18B20_Data* sensor, int ds_pin) {
+    ESP_LOGI(TAG, "Initializing DS18B20...");
 
     sensor->pin = ds_pin;
 
@@ -76,6 +80,9 @@ bool ds18b20_init(DS18B20_Data* sensor, int ds_pin) {
 
     gpio_set_direction(sensor->pin, GPIO_MODE_INPUT_OUTPUT_OD);
     gpio_set_level(sensor->pin, 1);
+
+    ESP_LOGI(TAG, "DS18B20 initialized with data pin: %d", sensor->pin);
+    ESP_LOGI(TAG, "Setting up DS18B20 configuration...");
 
     init_procedure(sensor);
 
@@ -88,7 +95,12 @@ bool ds18b20_init(DS18B20_Data* sensor, int ds_pin) {
 
     send_byte(sensor, RESOLUTION);
 
+    ESP_LOGI(TAG, "DS18B20 configuration set up!");
+    ESP_LOGI(TAG, "Reading initial temperature...");
+    
     read_scratchpad(sensor);
+
+    ESP_LOGI(TAG, "DS18B20 initial temperature read: %.2f °C", sensor->current_temp);
 
     return true;
 }

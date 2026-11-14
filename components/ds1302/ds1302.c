@@ -34,6 +34,7 @@ void next_bit(DS1302_Data *sensor);
 uint8_t dec2bcd(uint8_t dec);
 uint8_t bcd2dec(uint8_t bcd);
 
+static const char *TAG = "DS1302";
 
 void ds1302_init(
     DS1302_Data* sensor,
@@ -41,6 +42,7 @@ void ds1302_init(
     uint8_t clk_pin,
     uint8_t rst_pin
 ) {
+    ESP_LOGI(TAG, "Initializing DS1302...");
     sensor->dat_pin = dat_pin;
     sensor->clk_pin = clk_pin;
     sensor->rst_pin = rst_pin;
@@ -56,6 +58,9 @@ void ds1302_init(
     gpio_reset_pin(sensor->rst_pin);
     gpio_set_direction(sensor->rst_pin, GPIO_MODE_OUTPUT);
     gpio_set_level(sensor->rst_pin, 0);
+
+    ESP_LOGI(TAG, "DS1302 initialized with DAT pin: %d, CLK pin: %d, RST pin: %d",
+             sensor->dat_pin, sensor->clk_pin, sensor->rst_pin);
 }
 
 
