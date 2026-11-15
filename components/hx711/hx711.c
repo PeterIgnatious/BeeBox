@@ -67,20 +67,9 @@ void hx711_init(
 bool hx711_read_count(HX711_Data* sensor) {
 
     uint32_t count = 0;
-    uint32_t inicio = (uint32_t)esp_timer_get_time();
 
     // Aguarda o HX711 disponibilizar uma nova conversão.
-    while (gpio_get_level(sensor->dt_pin) != 0) {
-
-        if ((uint32_t)((uint32_t)esp_timer_get_time() - inicio) >= 150000u) {
-
-            printf("[HX711] Timeout: DT nao ficou baixo.\n");
-
-            return false;
-        }
-
-        // Equivalente ao tight_loop_contents() do Pico SDK.
-    }
+    while (gpio_get_level(sensor->dt_pin));
 
     // Lê os 24 bits enviados pelo conversor.
     for (int i = 0; i < 24; i++) {
