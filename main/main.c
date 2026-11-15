@@ -144,9 +144,9 @@ void sensors_init(void) {
 void sensors_read(void *pvParameters) {
     ESP_LOGI(TAG, "Acquiring data from sensors...");
 
-    // dht22_read(&dht22);
-    ds18b20_get_temperature(&ds18b20);
-    ESP_LOGI(TAG, "DS18B20: %.2f", ds18b20.current_temp);
+    dht22_read(&dht22);
+    // ds18b20_get_temperature(&ds18b20);
+    ESP_LOGI(TAG, "DHT22: %.2f - %.2f", dht22.temp_celsius, dht22.humidity);
     // hx711_get_weight(&hx711, SAMPLES_HX711);
 
     counter++;
