@@ -6,6 +6,7 @@
 #include "driver/gpio.h"
 #include "esp_timer.h"
 #include "esp_rom_sys.h"
+#include "esp_log.h"
 
 #include "dht22.h"
 

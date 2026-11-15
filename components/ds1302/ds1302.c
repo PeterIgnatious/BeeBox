@@ -6,6 +6,7 @@
 
 #include "driver/gpio.h"
 #include "esp_rom_sys.h"
+#include "esp_log.h"
 
 #include "ds1302.h"
 

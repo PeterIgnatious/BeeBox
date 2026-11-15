@@ -6,6 +6,8 @@
 #include "driver/gpio.h"
 #include "esp_rom_sys.h"
 #include "esp_timer.h"
+#include "esp_log.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -43,64 +45,82 @@ void read_scratchpad(DS18B20_Data* sensor);
 
 
 // Reset do barramento OneWire.
-void init_procedure(DS18B20_Data* sensor) {
+bool init_procedure(DS18B20_Data *sensor) {
 
+    // Configura o GPIO como saída open-drain
     gpio_set_direction(sensor->pin, GPIO_MODE_OUTPUT);
+
+    // Reset pulse: mantém o barramento em LOW por 490 us
     gpio_set_level(sensor->pin, 0);
     esp_rom_delay_us(490);
 
+    // Libera o barramento
     gpio_set_level(sensor->pin, 1);
     esp_rom_delay_us(60);
 
+    // Aguarda a resposta do DS18B20
     gpio_set_level(sensor->pin, 0);
     esp_rom_delay_us(10);
 
     gpio_set_direction(sensor->pin, GPIO_MODE_INPUT);
     esp_rom_delay_us(20);
 
-    int64_t start = esp_timer_get_time();
+    // Verifica o pulso de presença
+    bool presence = (gpio_get_level(sensor->pin) == 0);
 
-    while (gpio_get_level(sensor->pin)) {
-        if ((esp_timer_get_time() - start) > 1000) {
-            break;
-        }
+    if (!presence) {
+        ESP_LOGE(TAG, "DS18B20 not detected!");
+        return false;
     }
 
     esp_rom_delay_us(490);
+
+    ESP_LOGI(TAG, "DS18B20 initialized successfully!");
+
+    return true;
 }
 
 
 // Inicialização do DS18B20.
-bool ds18b20_init(DS18B20_Data* sensor, int ds_pin) {
+bool ds18b20_init(DS18B20_Data *sensor, int ds_pin) {
+
     ESP_LOGI(TAG, "Initializing DS18B20...");
 
+    // Define o pino de dados
     sensor->pin = ds_pin;
 
+    // Reseta a configuração anterior do GPIO
     gpio_reset_pin(sensor->pin);
+    gpio_set_pull_mode(sensor->pin, GPIO_PULLUP_ONLY);
 
-    gpio_set_direction(sensor->pin, GPIO_MODE_INPUT_OUTPUT_OD);
-    gpio_set_level(sensor->pin, 1);
+    // Verifica a presença do sensor
+    if (!init_procedure(sensor)) {
+        ESP_LOGE(TAG, "DS18B20 initialization failed!");
+        return false;
+    }
 
-    ESP_LOGI(TAG, "DS18B20 initialized with data pin: %d", sensor->pin);
-    ESP_LOGI(TAG, "Setting up DS18B20 configuration...");
-
-    init_procedure(sensor);
-
+    // Seleciona todos os dispositivos One-Wire
     send_byte(sensor, SKIP_ROM);
 
+    // Comando para escrever no Scratchpad
     send_byte(sensor, WRITE_SCRATCHPAD);
 
+    // Configuração dos limites de temperatura
     send_byte(sensor, TEMP_MAX);
     send_byte(sensor, TEMP_MIN);
 
+    // Configuração da resolução
     send_byte(sensor, RESOLUTION);
 
     ESP_LOGI(TAG, "DS18B20 configuration set up!");
+
+    // Leitura inicial
     ESP_LOGI(TAG, "Reading initial temperature...");
-    
+
     read_scratchpad(sensor);
 
-    ESP_LOGI(TAG, "DS18B20 initial temperature read: %.2f °C", sensor->current_temp);
+    ESP_LOGI(TAG, "DS18B20 initial temperature read: %.2f °C",
+             sensor->current_temp);
 
     return true;
 }
@@ -168,7 +188,7 @@ void send_byte(DS18B20_Data* sensor, uint8_t command) {
 // Envia um bit.
 void send_bit(DS18B20_Data* sensor, bool bit_state) {
 
-    gpio_set_direction(sensor->pin, GPIO_MODE_OUTPUT_OD);
+    gpio_set_direction(sensor->pin, GPIO_MODE_OUTPUT);
     gpio_set_level(sensor->pin, 0);
 
     bit_state ? esp_rom_delay_us(5) :
@@ -201,7 +221,7 @@ bool read_bit(DS18B20_Data* sensor) {
 
     bool bit_val = 0;
 
-    gpio_set_direction(sensor->pin, GPIO_MODE_OUTPUT_OD);
+    gpio_set_direction(sensor->pin, GPIO_MODE_OUTPUT);
     gpio_set_level(sensor->pin, 0);
 
     esp_rom_delay_us(2);
@@ -209,7 +229,6 @@ bool read_bit(DS18B20_Data* sensor) {
     // Libera a linha para leitura.
     gpio_set_level(sensor->pin, 1);
     gpio_set_direction(sensor->pin, GPIO_MODE_INPUT);
-
     esp_rom_delay_us(2);
 
     bit_val = gpio_get_level(sensor->pin);

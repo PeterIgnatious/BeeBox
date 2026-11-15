@@ -22,8 +22,8 @@
 // ==================================================
 
 // Sensores
-#define DHT22_DATA_PIN       4
-#define DS18B20_DATA_PIN     16
+#define DHT22_DATA_PIN       16
+#define DS18B20_DATA_PIN     4
 
 #define HX711_DT_PIN         32
 #define HX711_SCK_PIN        33
@@ -64,7 +64,7 @@
 
 #define TOTAL_ACQUISITIONS   5
 
-#define READING_INTERVAL     60000000 // 1 minuto
+#define READING_INTERVAL     6000000 // 1 minuto
 
 
 static const char *TAG = "BEEBOX";
@@ -144,9 +144,10 @@ void sensors_init(void) {
 void sensors_read(void *pvParameters) {
     ESP_LOGI(TAG, "Acquiring data from sensors...");
 
-    dht22_read(&dht22);
+    // dht22_read(&dht22);
     ds18b20_get_temperature(&ds18b20);
-    hx711_get_weight(&hx711, SAMPLES_HX711);
+    ESP_LOGI(TAG, "DS18B20: %.2f", ds18b20.current_temp);
+    // hx711_get_weight(&hx711, SAMPLES_HX711);
 
     counter++;
 
