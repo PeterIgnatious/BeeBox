@@ -64,7 +64,7 @@
 
 #define TOTAL_ACQUISITIONS   5
 
-#define READING_INTERVAL     6000000 // 1 minuto
+#define READING_INTERVAL     60000000 // 1 minuto
 
 
 static const char *TAG = "BEEBOX";
