@@ -41,7 +41,7 @@ void send_byte(DS18B20_Data* sensor, uint8_t command);
 void send_bit(DS18B20_Data* sensor, bool bit_state);
 uint8_t read_byte(DS18B20_Data* sensor);
 bool read_bit(DS18B20_Data* sensor);
-void read_scratchpad(DS18B20_Data* sensor);
+bool read_scratchpad(DS18B20_Data* sensor);
 
 
 // Reset do barramento OneWire.
@@ -111,7 +111,10 @@ bool ds18b20_init(DS18B20_Data *sensor, int ds_pin) {
 
     ESP_LOGI(TAG, "DS18B20 configuration set up!");
 
-    read_scratchpad(sensor);
+    if (!read_scratchpad(sensor)) {
+        ESP_LOGE(TAG, "ERROR: read_scratchpad()");
+        return false;
+    }
 
     ESP_LOGI(TAG, "DS18B20 initialized with data pin: %d", sensor->pin);
 
@@ -120,9 +123,12 @@ bool ds18b20_init(DS18B20_Data *sensor, int ds_pin) {
 
 
 // Inicia conversão e lê o scratchpad.
-void read_scratchpad(DS18B20_Data* sensor) {
+bool read_scratchpad(DS18B20_Data* sensor) {
 
-    init_procedure(sensor);
+    if (!init_procedure(sensor)) {
+        ESP_LOGE(TAG, "ERROR: init_procedure()");
+        return false;
+    }
 
     send_byte(sensor, SKIP_ROM);
 
@@ -130,7 +136,10 @@ void read_scratchpad(DS18B20_Data* sensor) {
 
     vTaskDelay(pdMS_TO_TICKS(CONVERTION_TIME));
 
-    init_procedure(sensor);
+    if (!init_procedure(sensor)) {
+        ESP_LOGE(TAG, "ERROR: init_procedure()");
+        return false;
+    }
 
     send_byte(sensor, SKIP_ROM);
     send_byte(sensor, READ_SCRATCHPAD);
@@ -147,13 +156,18 @@ void read_scratchpad(DS18B20_Data* sensor) {
     sensor->reserved3 = read_byte(sensor);
 
     sensor->crc = read_byte(sensor);
+
+    return true;
 }
 
 
 // Obtém a temperatura.
-void ds18b20_get_temperature(DS18B20_Data* sensor) {
+bool ds18b20_get_temperature(DS18B20_Data* sensor) {
     ESP_LOGI(TAG, "Acquiring DS18B20 data...");
-    read_scratchpad(sensor);
+    if (!read_scratchpad(sensor)) {
+        ESP_LOGE(TAG, "ERROR: read_scratchpad()");
+        return false;
+    }
 
     uint16_t value = sensor->temp_lsb |
                      (sensor->temp_msb << 8);
@@ -162,6 +176,8 @@ void ds18b20_get_temperature(DS18B20_Data* sensor) {
 
     sensor->current_temp = temperature;
     ESP_LOGI(TAG, "DS18B20 data acquired!");
+
+    return true;
 }
 
 

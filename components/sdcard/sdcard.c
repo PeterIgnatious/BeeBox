@@ -125,9 +125,11 @@ esp_err_t sdcard_init(void)
 
 esp_err_t sdcard_save_data(
     float temperature_dht22,
+    float humidity_dht22,
     float temperature_ds18b20,
     float weight,
-    char *timestamp
+    char *timestamp,
+    int is_send_to_thingsboard
 )
 {
     if (!sdcard_mounted) {
@@ -147,11 +149,13 @@ esp_err_t sdcard_save_data(
     // Escreve os dados no arquivo
     fprintf(
         file,
-        "%s,%.2f,%.2f,%.2f\n",
+        "%s,%.2f,%.2f,%.2f,%.2f,%d\n",
         timestamp,
         temperature_dht22,
+        humidity_dht22,
         temperature_ds18b20,
-        weight
+        weight,
+        is_send_to_thingsboard
     );
 
     // Garante que os dados sejam enviados ao cartão

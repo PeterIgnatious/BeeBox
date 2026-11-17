@@ -22,8 +22,8 @@
 // ==================================================
 
 // Sensores
-#define DHT22_DATA_PIN       16
-#define DS18B20_DATA_PIN     4
+#define DHT22_DATA_PIN       4
+#define DS18B20_DATA_PIN     16
 
 #define HX711_DT_PIN         32
 #define HX711_SCK_PIN        33
@@ -138,27 +138,28 @@ void sensors_init(void) {
 
 void sensors_task(void *pvParameters) {
     ESP_LOGI(TAG, "Acquiring data from sensors...");
-    char timestamp[30];
-    ds1302_get_timestamp(&ds1302, timestamp);
-    ESP_LOGI(TAG, "%s", timestamp);
-    ESP_LOGI(TAG, "%d", ds1302.day);
 
     if (dht22_read(&dht22)) {
         ESP_LOGI(TAG, "DHT22: %.1f - %.1f", dht22.temp_celsius, dht22.humidity);
         data.temperature_dht22_sum += dht22.temp_celsius;
         data.dht22_total++;
+        data.humidity_sum += dht22.humidity;
+
     }
-    ds18b20_get_temperature(&ds18b20);
-    ESP_LOGI(TAG, "DS18B20: %.1f", ds18b20.current_temp);
-    hx711_get_weight(&hx711, SAMPLES_HX711);
-    ESP_LOGI(TAG, "HX711: %.2f", hx711.weight);
+    
+    if (ds18b20_get_temperature(&ds18b20)) {
+        ESP_LOGI(TAG, "DS18B20: %.1f", ds18b20.current_temp);
+        data.temperature_ds18b20_sum += ds18b20.current_temp;
+        data.ds18b20_total++;
+    }
 
+    if (hx711_get_weight(&hx711, SAMPLES_HX711)) {
+        ESP_LOGI(TAG, "HX711: %.2f", hx711.weight);
+        data.weight_sum += hx711.weight;
+        data.hx711_total++;
+    }
+    
     counter++;
-
-    data.temperature_ds18b20_sum += ds18b20.current_temp;
-    data.ds18b20_total++;
-    data.weight_sum += hx711.weight;
-    data.hx711_total++;
 
     if (counter < TOTAL_ACQUISITIONS) {
         esp_sleep_enable_timer_wakeup(READING_INTERVAL);
@@ -170,6 +171,8 @@ void sensors_task(void *pvParameters) {
             = data.temperature_ds18b20_sum / data.ds18b20_total;
         average.temperature_dht22 
             = data.temperature_dht22_sum / data.dht22_total;
+        average.humidity
+            = data.humidity_sum / data.dht22_total;
         average.weight 
             = data.weight_sum / data.hx711_total;
         
@@ -187,25 +190,31 @@ void output_task (void *pvParameters) {
     SensorAverage average = {0};
 
     if (xQueueReceive(sensor_queue, &average, portMAX_DELAY) == true) {
+
+        // Criar lógica para mandar pelo Wi-Fi AQUI!
+
         if (sdcard_init() != ESP_OK) {
             ESP_LOGE(TAG, "SD initialization failed!");
-            vTaskDelete(NULL);  
+        } else {
+            char timestamp[30];
+            int is_send_to_thingsboard = 1;
+            ds1302_get_timestamp(&ds1302, timestamp);
+
+            if (sdcard_save_data(
+                average.temperature_dht22,
+                average.humidity,
+                average.temperature_ds18b20,
+                average.weight,
+                timestamp,
+                is_send_to_thingsboard
+            ) != ESP_OK) {
+                ESP_LOGE(TAG, "SAVE DATA OPERATION FAILED!");
+            }
+            sdcard_deinit();
         }
-        
-        char timestamp[30];
-        ds1302_get_timestamp(&ds1302, timestamp);
-
-        sdcard_save_data(
-            average.temperature_dht22,
-            average.temperature_ds18b20,
-            average.weight,
-            timestamp
-        );
     }
-
-    sdcard_deinit();
-
-    // Criar lógica para mandar pelo Wi-Fi...
+    
+    counter = 0;
 
     ESP_LOGI(TAG, "Entering deep sleep mode...");
     esp_sleep_enable_timer_wakeup(READING_INTERVAL);

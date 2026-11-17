@@ -12,7 +12,7 @@
 
 
 // Tempo máximo de espera para detectar uma resposta do sensor.
-const uint32_t TIMEOUT_ERROR = 1000;
+const uint32_t TIMEOUT_ERROR = 500;
 
 // Declara o valor da TAG
 static const char *TAG = "DHT22";
@@ -160,7 +160,7 @@ bool dht22_read(DHT22_Data* sensor) {
                 sensor->temp_celsius = -sensor->temp_celsius;
             }
 
-            ESP_LOGI(TAG, "DHT22 read successfully!");
+            ESP_LOGI(TAG, "DHT22 read successfully! %.2f", sensor->temp_celsius);
             return true; // Leitura válida.
 
         } else {

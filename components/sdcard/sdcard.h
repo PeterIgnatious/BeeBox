@@ -10,9 +10,11 @@ esp_err_t sdcard_init(void);
 // Salva os dados dos sensores
 esp_err_t sdcard_save_data(
     float temperature_dht22,
+    float humidity_dht22,
     float temperature_ds18b20,
     float weight,
-    char *timestamp
+    char *timestamp,
+    int is_send_to_thingsboard
 );
 
 // Desmonta o cartão SD
