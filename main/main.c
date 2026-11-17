@@ -56,9 +56,9 @@
 
 #define SAMPLES_HX711        10
 
-#define TOTAL_ACQUISITIONS   5
+#define TOTAL_ACQUISITIONS   100
 
-#define READING_INTERVAL     1500000
+#define READING_INTERVAL     6000000
 //#define READING_INTERVAL     60000000 // 1 minuto
 
 
@@ -108,13 +108,13 @@ static DS1302_Data ds1302 = {0};
 void sensors_init(void) {
     ESP_LOGI(TAG, "Initializing sensors...");
     // Inicializa o DHT22, informando o pino de dados.
-    // dht22_init(&dht22, DHT22_DATA_PIN);
+    dht22_init(&dht22, DHT22_DATA_PIN);
 
     // Inicializa o DS18B20, informando o pino de dados.
-    // ds18b20_init(&ds18b20, DS18B20_DATA_PIN);
+    ds18b20_init(&ds18b20, DS18B20_DATA_PIN);
 
     // Inicializa o HX711, informando os pinos DT e SCK.
-    // hx711_init(&hx711, HX711_DT_PIN, HX711_SCK_PIN, HX711_SCALE_FACTOR, HX711_TARA);
+    hx711_init(&hx711, HX711_DT_PIN, HX711_SCK_PIN, HX711_SCALE_FACTOR, HX711_TARA);
 
     // Inicializa o DS1302, informando os pinos CLK, DATA e RST.
     ds1302_init(&ds1302, DS1302_DATA_PIN, DS1302_CLK_PIN, DS1302_RST_PIN);
@@ -129,7 +129,7 @@ void sensors_init(void) {
         data.hx711_total = 0;
     }
 
-    ESP_LOGI(TAG, "Sensors initialized!");
+    ESP_LOGI(TAG, "ALL SENSORS INITIALIZED!");
 }
 
 // ==================================================
@@ -143,15 +143,18 @@ void sensors_task(void *pvParameters) {
     ESP_LOGI(TAG, "%s", timestamp);
     ESP_LOGI(TAG, "%d", ds1302.day);
 
-    // dht22_read(&dht22);
-    // ds18b20_get_temperature(&ds18b20);
-    // hx711_get_weight(&hx711, SAMPLES_HX711);
-    // ESP_LOGI(TAG, "HX711: %.2f", hx711.weight);
+    if (dht22_read(&dht22)) {
+        ESP_LOGI(TAG, "DHT22: %.1f - %.1f", dht22.temp_celsius, dht22.humidity);
+        data.temperature_dht22_sum += dht22.temp_celsius;
+        data.dht22_total++;
+    }
+    ds18b20_get_temperature(&ds18b20);
+    ESP_LOGI(TAG, "DS18B20: %.1f", ds18b20.current_temp);
+    hx711_get_weight(&hx711, SAMPLES_HX711);
+    ESP_LOGI(TAG, "HX711: %.2f", hx711.weight);
 
     counter++;
 
-    data.temperature_dht22_sum += dht22.temp_celsius;
-    data.dht22_total++;
     data.temperature_ds18b20_sum += ds18b20.current_temp;
     data.ds18b20_total++;
     data.weight_sum += hx711.weight;
@@ -181,14 +184,14 @@ void sensors_task(void *pvParameters) {
 // ==================================================
 
 void output_task (void *pvParameters) {
-    if (sdcard_init() != ESP_OK) {
-        ESP_LOGE(TAG, "SD initialization failed!");
-        vTaskDelete(NULL);
-    }
-
     SensorAverage average = {0};
 
     if (xQueueReceive(sensor_queue, &average, portMAX_DELAY) == true) {
+        if (sdcard_init() != ESP_OK) {
+            ESP_LOGE(TAG, "SD initialization failed!");
+            vTaskDelete(NULL);  
+        }
+        
         char timestamp[30];
         ds1302_get_timestamp(&ds1302, timestamp);
 

@@ -32,9 +32,6 @@ void dht22_init(DHT22_Data* sensor, uint8_t pin) {
 
     gpio_reset_pin((gpio_num_t)sensor->data_pin);
     gpio_set_direction((gpio_num_t)sensor->data_pin, GPIO_MODE_OUTPUT);
-
-    // Ativa o pull-up interno e mantém a linha em nível alto.
-    gpio_pullup_en((gpio_num_t)sensor->data_pin);
     gpio_set_level((gpio_num_t)sensor->data_pin, 1);
 
     ESP_LOGI(TAG, "DHT22 initialized with data pin: %d", sensor->data_pin);
@@ -56,46 +53,47 @@ void start_signal(DHT22_Data* sensor) {
 
     // Configura o pino como entrada para receber a resposta.
     gpio_set_direction((gpio_num_t)sensor->data_pin, GPIO_MODE_INPUT);
-    gpio_pullup_en((gpio_num_t)sensor->data_pin);
 }
 
 
 // Lê um byte (8 bits) enviado pelo sensor.
-int read_data(DHT22_Data* sensor) {
-    int value = 0;
-
+bool read_data(DHT22_Data* sensor, int* value) {
+    *value = 0;
     for (int i = 0; i < 8; i++) {
+        uint32_t start1 = millis();
+        while (gpio_get_level((gpio_num_t)sensor->data_pin) == 0) {
+            if (millis() - start1 > TIMEOUT_ERROR) {
+                ESP_LOGE(TAG, "TIMEOUT ERROR!");
+                return false;
+            }
+        }
 
-        // Aguarda o início do pulso alto correspondente ao bit.
-        while (gpio_get_level((gpio_num_t)sensor->data_pin) == 0);
-
-        // Aguarda parte do pulso para distinguir 0 de 1.
         esp_rom_delay_us(30);
 
         // Se a linha continuar alta após 30 us,
         // considera o bit recebido como 1.
         if (gpio_get_level((gpio_num_t)sensor->data_pin) == 1) {
-            value |= (1 << (7 - i));
+            *value |= (1 << (7 - i));
         }
 
         // Aguarda o fim do pulso alto antes do próximo bit.
-        uint32_t start = millis();
+        uint32_t start2 = millis();
 
         while (gpio_get_level((gpio_num_t)sensor->data_pin) == 1) {
-            if (millis() - start > TIMEOUT_ERROR) {
-                value = -1;
-                return value;
+            if (millis() - start2 > TIMEOUT_ERROR) {
+                ESP_LOGE(TAG, "TIMEOUT ERROR!");
+                return false;
             }
         }
     }
 
-    return value;
+    return true;
 }
 
 
 // Solicita e interpreta uma leitura completa do sensor.
 bool dht22_read(DHT22_Data* sensor) {
-
+    ESP_LOGI(TAG, "Acquiring DHT22 data...");
     // O DHT22 transmite 5 bytes:
     // 2 de umidade, 2 de temperatura e 1 de checksum.
     uint8_t data[5] = {0, 0, 0, 0, 0};
@@ -109,7 +107,7 @@ bool dht22_read(DHT22_Data* sensor) {
     // a linha de dados para nível baixo.
     while (gpio_get_level((gpio_num_t)sensor->data_pin) == 1) {
         if (millis() - start_time > TIMEOUT_ERROR) {
-            printf("DHT22 ERROR: Timeout\n");
+            ESP_LOGE(TAG, "TIMEOUT ERROR!");
             return false;
         }
     }
@@ -123,7 +121,13 @@ bool dht22_read(DHT22_Data* sensor) {
 
             // Recebe os cinco bytes transmitidos pelo DHT22.
             for (int j = 0; j < 5; j++) {
-                data[j] = read_data(sensor);
+                int value = 0;
+                if (read_data(sensor, &value)) {
+                    data[j] = (uint8_t) value;
+                } else {
+                    ESP_LOGE(TAG, "ERROR AT PROCESSING BITS!");
+                    return false;   
+                }
             }
         }
 
@@ -156,11 +160,14 @@ bool dht22_read(DHT22_Data* sensor) {
                 sensor->temp_celsius = -sensor->temp_celsius;
             }
 
+            ESP_LOGI(TAG, "DHT22 read successfully!");
             return true; // Leitura válida.
+
         } else {
+            ESP_LOGE(TAG, "CHECKSUM NOT VALID!");
             return false; // Falha na verificação do checksum.
         }
     }
-
+    ESP_LOGE(TAG, "INVALID INITIAL RESPONSE!");
     return false; // Resposta inicial inválida.
 }

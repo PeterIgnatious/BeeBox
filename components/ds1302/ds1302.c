@@ -229,7 +229,7 @@ void ds1302_halt(DS1302_Data* sensor) {
 
 
 void ds1302_get_timestamp(DS1302_Data* sensor, char* timestamp) {
-
+    ESP_LOGI(TAG, "Acquiring DS1302 timestamp...");
     ds1302_get_datetime(sensor);
 
     snprintf(
@@ -243,4 +243,5 @@ void ds1302_get_timestamp(DS1302_Data* sensor, char* timestamp) {
         sensor->minutes,
         sensor->seconds
     );
+    ESP_LOGI(TAG, "DS1302 timestamp acquired!");
 }

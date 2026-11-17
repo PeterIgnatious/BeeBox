@@ -75,8 +75,6 @@ bool init_procedure(DS18B20_Data *sensor) {
 
     esp_rom_delay_us(490);
 
-    ESP_LOGI(TAG, "DS18B20 initialized successfully!");
-
     return true;
 }
 
@@ -91,7 +89,6 @@ bool ds18b20_init(DS18B20_Data *sensor, int ds_pin) {
 
     // Reseta a configuração anterior do GPIO
     gpio_reset_pin(sensor->pin);
-    gpio_set_pull_mode(sensor->pin, GPIO_PULLUP_ONLY);
 
     // Verifica a presença do sensor
     if (!init_procedure(sensor)) {
@@ -114,13 +111,9 @@ bool ds18b20_init(DS18B20_Data *sensor, int ds_pin) {
 
     ESP_LOGI(TAG, "DS18B20 configuration set up!");
 
-    // Leitura inicial
-    ESP_LOGI(TAG, "Reading initial temperature...");
-
     read_scratchpad(sensor);
 
-    ESP_LOGI(TAG, "DS18B20 initial temperature read: %.2f °C",
-             sensor->current_temp);
+    ESP_LOGI(TAG, "DS18B20 initialized with data pin: %d", sensor->pin);
 
     return true;
 }
@@ -159,7 +152,7 @@ void read_scratchpad(DS18B20_Data* sensor) {
 
 // Obtém a temperatura.
 void ds18b20_get_temperature(DS18B20_Data* sensor) {
-
+    ESP_LOGI(TAG, "Acquiring DS18B20 data...");
     read_scratchpad(sensor);
 
     uint16_t value = sensor->temp_lsb |
@@ -168,6 +161,7 @@ void ds18b20_get_temperature(DS18B20_Data* sensor) {
     float temperature = (int16_t)value * 0.0625f;
 
     sensor->current_temp = temperature;
+    ESP_LOGI(TAG, "DS18B20 data acquired!");
 }
 
 
