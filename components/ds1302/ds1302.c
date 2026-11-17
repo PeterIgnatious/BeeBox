@@ -115,6 +115,7 @@ void ds1302_get_datetime(DS1302_Data* sensor) {
     sensor->year =
         bcd2dec(ds1302_read_byte(sensor) & 0b01111111);
 
+    ESP_LOGW(TAG, "%d", sensor->seconds);
     gpio_set_level(sensor->rst_pin, 0);
 }
 
@@ -155,7 +156,14 @@ uint8_t ds1302_read_byte(DS1302_Data* sensor) {
 
 void prepare_write(DS1302_Data* sensor, uint8_t reg) {
 
+    gpio_set_level(sensor->rst_pin, 0);
+    gpio_set_level(sensor->clk_pin, 0);
+
+    esp_rom_delay_us(4);
+
     gpio_set_level(sensor->rst_pin, 1);
+
+    esp_rom_delay_us(4);
 
     uint8_t command = 0b10000000 | reg;
 
@@ -165,7 +173,14 @@ void prepare_write(DS1302_Data* sensor, uint8_t reg) {
 
 void prepare_read(DS1302_Data* sensor, uint8_t reg) {
 
+    gpio_set_level(sensor->rst_pin, 0);
+    gpio_set_level(sensor->clk_pin, 0);
+
+    esp_rom_delay_us(4);
+
     gpio_set_level(sensor->rst_pin, 1);
+
+    esp_rom_delay_us(4);
 
     uint8_t command = 0b10000001 | reg;
 

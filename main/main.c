@@ -15,7 +15,7 @@
 #include "ds18b20.h"
 #include "hx711.h"
 #include "ds1302.h"
-// #include "microsd.h"
+#include "sdcard.h"
 
 // ==================================================
 // CONFIGURACAO DOS PINOS - ESP32 DEVKIT
@@ -32,12 +32,6 @@
 #define DS1302_CLK_PIN       25
 #define DS1302_DATA_PIN      26
 #define DS1302_RST_PIN       27
-
-// Cartao SD - SPI
-#define SD_MISO_PIN          19
-#define SD_MOSI_PIN          23
-#define SD_SCK_PIN           18
-#define SD_CS_PIN             5
 
 // ==================================================
 // CALIBRACAO HX711
@@ -64,7 +58,8 @@
 
 #define TOTAL_ACQUISITIONS   5
 
-#define READING_INTERVAL     60000000 // 1 minuto
+#define READING_INTERVAL     1500000
+//#define READING_INTERVAL     60000000 // 1 minuto
 
 
 static const char *TAG = "BEEBOX";
@@ -113,16 +108,16 @@ static DS1302_Data ds1302 = {0};
 void sensors_init(void) {
     ESP_LOGI(TAG, "Initializing sensors...");
     // Inicializa o DHT22, informando o pino de dados.
-    dht22_init(&dht22, DHT22_DATA_PIN);
+    // dht22_init(&dht22, DHT22_DATA_PIN);
 
     // Inicializa o DS18B20, informando o pino de dados.
-    ds18b20_init(&ds18b20, DS18B20_DATA_PIN);
+    // ds18b20_init(&ds18b20, DS18B20_DATA_PIN);
 
     // Inicializa o HX711, informando os pinos DT e SCK.
-    hx711_init(&hx711, HX711_DT_PIN, HX711_SCK_PIN, HX711_SCALE_FACTOR, HX711_TARA);
+    // hx711_init(&hx711, HX711_DT_PIN, HX711_SCK_PIN, HX711_SCALE_FACTOR, HX711_TARA);
 
     // Inicializa o DS1302, informando os pinos CLK, DATA e RST.
-    ds1302_init(&ds1302, DS1302_CLK_PIN, DS1302_DATA_PIN, DS1302_RST_PIN);
+    ds1302_init(&ds1302, DS1302_DATA_PIN, DS1302_CLK_PIN, DS1302_RST_PIN);
 
     if (counter == 0) {
         data.temperature_dht22_sum = 0;
@@ -141,13 +136,17 @@ void sensors_init(void) {
 // TASK DA AQUISIÇÃO DOS DADOS
 // ==================================================
 
-void sensors_read(void *pvParameters) {
+void sensors_task(void *pvParameters) {
     ESP_LOGI(TAG, "Acquiring data from sensors...");
+    char timestamp[30];
+    ds1302_get_timestamp(&ds1302, timestamp);
+    ESP_LOGI(TAG, "%s", timestamp);
+    ESP_LOGI(TAG, "%d", ds1302.day);
 
     // dht22_read(&dht22);
     // ds18b20_get_temperature(&ds18b20);
-    hx711_get_weight(&hx711, SAMPLES_HX711);
-    ESP_LOGI(TAG, "HX711: %.2f", hx711.weight);
+    // hx711_get_weight(&hx711, SAMPLES_HX711);
+    // ESP_LOGI(TAG, "HX711: %.2f", hx711.weight);
 
     counter++;
 
@@ -176,6 +175,39 @@ void sensors_read(void *pvParameters) {
         vTaskDelete(NULL);
     }
 }
+
+// ==================================================
+// TASK DO ARMAZENAMENTO E ENVIO
+// ==================================================
+
+void output_task (void *pvParameters) {
+    if (sdcard_init() != ESP_OK) {
+        ESP_LOGE(TAG, "SD initialization failed!");
+        vTaskDelete(NULL);
+    }
+
+    SensorAverage average = {0};
+
+    if (xQueueReceive(sensor_queue, &average, portMAX_DELAY) == true) {
+        char timestamp[30];
+        ds1302_get_timestamp(&ds1302, timestamp);
+
+        sdcard_save_data(
+            average.temperature_dht22,
+            average.temperature_ds18b20,
+            average.weight,
+            timestamp
+        );
+    }
+
+    sdcard_deinit();
+
+    // Criar lógica para mandar pelo Wi-Fi...
+
+    ESP_LOGI(TAG, "Entering deep sleep mode...");
+    esp_sleep_enable_timer_wakeup(READING_INTERVAL);
+    esp_deep_sleep_start();
+}
     
 
 void app_main(void)
@@ -184,14 +216,23 @@ void app_main(void)
 
     sensors_init();
     
-    xTaskCreate(
-        sensors_read,
+    xTaskCreatePinnedToCore(
+        sensors_task,
         "sensor_task",
         4096,
         NULL,
         5,
-        NULL
+        NULL,
+        1
     );
 
-
+    xTaskCreatePinnedToCore(
+        output_task,
+        "output_task",
+        4096,
+        NULL,
+        4,
+        NULL,
+        0
+    );
 }

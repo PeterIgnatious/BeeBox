@@ -51,4 +51,6 @@ bool isHalted(DS1302_Data* sensor);
 
 void ds1302_halt(DS1302_Data* sensor);
 
+uint8_t ds1302_test_read(DS1302_Data *sensor);
+
 #endif
