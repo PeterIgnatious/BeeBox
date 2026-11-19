@@ -6,6 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
+#include "driver/gpio.h"
 
 #include "esp_log.h"
 #include "esp_err.h"
@@ -56,7 +57,7 @@
 
 #define SAMPLES_HX711        10
 
-#define TOTAL_ACQUISITIONS   100
+#define TOTAL_ACQUISITIONS   2
 
 #define READING_INTERVAL     6000000
 //#define READING_INTERVAL     60000000 // 1 minuto
@@ -112,13 +113,13 @@ void sensors_init(void) {
     dht22_init(&dht22, DHT22_DATA_PIN);
 
     // Inicializa o DS18B20, informando o pino de dados.
-    // ds18b20_init(&ds18b20, DS18B20_DATA_PIN);
+    ds18b20_init(&ds18b20, DS18B20_DATA_PIN);
 
     // Inicializa o HX711, informando os pinos DT e SCK.
-    // hx711_init(&hx711, HX711_DT_PIN, HX711_SCK_PIN, HX711_SCALE_FACTOR, HX711_TARA);
+    hx711_init(&hx711, HX711_DT_PIN, HX711_SCK_PIN, HX711_SCALE_FACTOR, HX711_TARA);
 
     // Inicializa o DS1302, informando os pinos CLK, DATA e RST.
-    //ds1302_init(&ds1302, DS1302_DATA_PIN, DS1302_CLK_PIN, DS1302_RST_PIN);
+    ds1302_init(&ds1302, DS1302_DATA_PIN, DS1302_CLK_PIN, DS1302_RST_PIN);
 
     if (counter == 0) {
         data.temperature_dht22_sum = 0;
@@ -147,25 +148,23 @@ void sensors_task(void *pvParameters) {
         data.humidity_sum += dht22.humidity;
 
     }
-    /*
     if (ds18b20_get_temperature(&ds18b20)) {
         ESP_LOGI(TAG, "DS18B20: %.1f", ds18b20.current_temp);
         data.temperature_ds18b20_sum += ds18b20.current_temp;
         data.ds18b20_total++;
     }
-
     if (hx711_get_weight(&hx711, SAMPLES_HX711)) {
         ESP_LOGI(TAG, "HX711: %.2f", hx711.weight);
         data.weight_sum += hx711.weight;
         data.hx711_total++;
     }
-    */
     
     counter++;
 
     if (counter < TOTAL_ACQUISITIONS) {
         ESP_LOGI(TAG, "Entering sleep mode...");
         esp_sleep_enable_timer_wakeup(READING_INTERVAL);
+        gpio_set_level(13, 1);
         esp_deep_sleep_start();
     } else {
         SensorAverage average = {0};
@@ -207,7 +206,7 @@ void output_task (void *pvParameters) {
                 average.temperature_dht22,
                 average.humidity,
                 average.temperature_ds18b20,
-                average.weight,
+                hx711.current_count,
                 timestamp,
                 is_send_to_thingsboard
             ) != ESP_OK) {
@@ -227,6 +226,7 @@ void output_task (void *pvParameters) {
 
 void app_main(void)
 {
+    gpio_set_level(13, 0);
     sensor_queue = xQueueCreate(1, sizeof(SensorAverage));
 
     sensors_init();

@@ -17,15 +17,7 @@ const int LOADCELL_TARA_DEFAULT = 8691130;
 // Fator de escala padrão, obtido durante a calibração da célula de carga.
 const int LOADCELL_SCALE_FACTOR_DEFAULT = 461;
 
-const int TIMEOUT_LIMIT = 1000;
-
 static const char *TAG = "HX711";
-
-
-// Equivalente à função millis() do Raspberry Pi Pico.
-static uint32_t millis(void) {
-    return (uint32_t)(esp_timer_get_time() / 1000);
-}
 
 // Inicializa o HX711, configurando os pinos e os parâmetros de calibração.
 void hx711_init(
@@ -52,6 +44,7 @@ void hx711_init(
     // Configura o pino DT como entrada.
     gpio_reset_pin(sensor->dt_pin);
     gpio_set_direction(sensor->dt_pin, GPIO_MODE_INPUT);
+    gpio_pullup_en(sensor->dt_pin);
 
     sensor->current_count = 0;
     sensor->weight = 0.0f;
@@ -72,16 +65,11 @@ void hx711_init(
 
 // Realiza a leitura dos 24 bits disponibilizados pelo HX711.
 bool hx711_read_count(HX711_Data* sensor) {
+
     uint32_t count = 0;
-    uint32_t start = millis();
 
     // Aguarda o HX711 disponibilizar uma nova conversão.
-    while (gpio_get_level(sensor->dt_pin)) {
-        if (millis() - start > TIMEOUT_LIMIT) {
-            ESP_LOGE(TAG, "TIMEOUT ERROR!");
-            return false;
-        }
-    }
+    while (gpio_get_level(sensor->dt_pin));
 
     // Lê os 24 bits enviados pelo conversor.
     for (int i = 0; i < 24; i++) {
@@ -114,6 +102,8 @@ bool hx711_read_count(HX711_Data* sensor) {
 
     sensor->current_count = count;
 
+    ESP_LOGW(TAG, "%d", sensor->current_count);
+
     return true;
 }
 
@@ -143,10 +133,9 @@ bool hx711_get_average_count(HX711_Data *sensor, int samples)
 
 // Obtém o peso a partir da leitura média do HX711.
 bool hx711_get_weight(HX711_Data* sensor, int samples) {
-    ESP_LOGI(TAG, "Acquiring data from HX711...");
+
     if (!hx711_get_average_count(sensor, samples)) {
         sensor->weight = 0.0f;
-        ESP_LOGE(TAG, "ERROR IN GET AVERAGE!");
         return false;
     }
 
@@ -162,6 +151,5 @@ bool hx711_get_weight(HX711_Data* sensor, int samples) {
 
     sensor->weight = weight;
 
-    ESP_LOGI(TAG, "HX711 data acquired!");
     return true;
 }
