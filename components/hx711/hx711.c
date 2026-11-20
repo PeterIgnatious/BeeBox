@@ -15,7 +15,7 @@
 const int LOADCELL_TARA_DEFAULT = 8691130;
 
 // Fator de escala padrão, obtido durante a calibração da célula de carga.
-const int LOADCELL_SCALE_FACTOR_DEFAULT = 461;
+const int LOADCELL_SCALE_FACTOR_DEFAULT = 416;
 
 static const char *TAG = "HX711";
 
@@ -102,8 +102,6 @@ bool hx711_read_count(HX711_Data* sensor) {
 
     sensor->current_count = count;
 
-    ESP_LOGW(TAG, "%d", sensor->current_count);
-
     return true;
 }
 
@@ -140,13 +138,14 @@ bool hx711_get_weight(HX711_Data* sensor, int samples) {
     }
 
     float weight = 0.0f;
-
+    ESP_LOGW(TAG, "Current Count: %d", sensor->current_count);
     if (sensor->current_count > sensor->tara_count) {
 
         weight = (sensor->current_count - sensor->tara_count)
                  / sensor->scale_factor;
 
         weight = round(weight / 10.0f) * 10.0f;
+        
     }
 
     sensor->weight = weight;

@@ -38,8 +38,8 @@
 // CALIBRACAO HX711
 // ==================================================
 
-#define HX711_TARA           8693267
-#define HX711_SCALE_FACTOR   424.0
+#define HX711_TARA           8689723
+#define HX711_SCALE_FACTOR   416
 
 // ==================================================
 // CONFIGURACAO DOS PARÂMETROS
@@ -55,12 +55,14 @@
 
 #define QUEUE_LENGTH         10
 
-#define SAMPLES_HX711        10
+#define SAMPLES_HX711       10
 
 #define TOTAL_ACQUISITIONS   2
 
 #define READING_INTERVAL     6000000
 //#define READING_INTERVAL     60000000 // 1 minuto
+
+#define LED_PIN GPIO_NUM_2
 
 
 static const char *TAG = "BEEBOX";
@@ -135,6 +137,32 @@ void sensors_init(void) {
 }
 
 // ==================================================
+// INICIALIZAÇÃO DO LED BUILTIN - 2
+// ==================================================
+
+void led_init(void)
+{
+    gpio_reset_pin(LED_PIN);
+    gpio_set_direction(LED_PIN, GPIO_MODE_OUTPUT);
+    gpio_set_level(LED_PIN, 0);
+}
+
+// ==================================================
+// ENTRANDO NO DEEPSLEEP
+// ==================================================
+
+void enter_deep_sleep(void) {
+    gpio_set_level(HX711_DT_PIN, 0);
+    gpio_set_level(DS18B20_DATA_PIN, 0);
+    gpio_set_level(DHT22_DATA_PIN, 0);
+    gpio_set_level(LED_PIN, 0);
+
+    ESP_LOGI(TAG, "Entering sleep mode...");
+    esp_sleep_enable_timer_wakeup(READING_INTERVAL);
+    esp_deep_sleep_start();
+}
+
+// ==================================================
 // TASK DA AQUISIÇÃO DOS DADOS
 // ==================================================
 
@@ -162,10 +190,7 @@ void sensors_task(void *pvParameters) {
     counter++;
 
     if (counter < TOTAL_ACQUISITIONS) {
-        ESP_LOGI(TAG, "Entering sleep mode...");
-        esp_sleep_enable_timer_wakeup(READING_INTERVAL);
-        gpio_set_level(13, 1);
-        esp_deep_sleep_start();
+        enter_deep_sleep();
     } else {
         SensorAverage average = {0};
 
@@ -206,7 +231,7 @@ void output_task (void *pvParameters) {
                 average.temperature_dht22,
                 average.humidity,
                 average.temperature_ds18b20,
-                hx711.current_count,
+                average.weight,
                 timestamp,
                 is_send_to_thingsboard
             ) != ESP_OK) {
@@ -218,15 +243,14 @@ void output_task (void *pvParameters) {
     
     counter = 0;
 
-    ESP_LOGI(TAG, "Entering deep sleep mode...");
-    esp_sleep_enable_timer_wakeup(READING_INTERVAL);
-    esp_deep_sleep_start();
+    enter_deep_sleep();
 }
     
 
 void app_main(void)
 {
-    gpio_set_level(13, 0);
+    led_init();
+    gpio_set_level(LED_PIN, 1);
     sensor_queue = xQueueCreate(1, sizeof(SensorAverage));
 
     sensors_init();
