@@ -18,6 +18,9 @@
 #include "ds1302.h"
 #include "sdcard.h"
 
+#include "wifi_manager.h"
+#include "thingsboard.h"
+
 // ==================================================
 // CONFIGURACAO DOS PINOS - ESP32 DEVKIT
 // ==================================================
@@ -57,10 +60,9 @@
 
 #define SAMPLES_HX711       10
 
-#define TOTAL_ACQUISITIONS   2
+#define TOTAL_ACQUISITIONS   5
 
-#define READING_INTERVAL     6000000
-//#define READING_INTERVAL     60000000 // 1 minuto
+#define READING_INTERVAL     60000000 // 1 minuto
 
 #define LED_PIN GPIO_NUM_2
 
@@ -218,8 +220,6 @@ void output_task (void *pvParameters) {
 
     if (xQueueReceive(sensor_queue, &average, portMAX_DELAY) == true) {
 
-        // Criar lógica para mandar pelo Wi-Fi AQUI!
-
         if (sdcard_init() != ESP_OK) {
             ESP_LOGE(TAG, "SD initialization failed!");
         } else {
@@ -239,6 +239,46 @@ void output_task (void *pvParameters) {
             }
             sdcard_deinit();
         }
+
+        // =========================================
+        // 2. INICIALIZACAO DO WIFI
+        // =========================================
+
+        ESP_LOGI(TAG, "Initializing Wi-Fi...");
+
+        wifi_manager_init();
+
+        // Aguarda ate 20 segundos pela conexao
+        if (wifi_manager_wait_connected(20000))
+        {
+            ESP_LOGI(TAG, "Wi-Fi connected!");
+
+            // =====================================
+            // 3. ENVIO AO THINGSBOARD
+            // =====================================
+
+            esp_err_t result = thingsboard_send_telemetry(
+                average.temperature_dht22,
+                average.humidity,
+                average.weight,
+                average.temperature_ds18b20
+            );
+
+            if (result == ESP_OK)
+            {
+                ESP_LOGI(TAG, "Data sent to ThingsBoard!");
+            }
+            else
+            {
+                ESP_LOGE(TAG, "ThingsBoard transmission failed!");
+            }
+        }
+        else
+        {
+            ESP_LOGW(TAG, "Wi-Fi connection timeout!");
+        }
+
+
     }
     
     counter = 0;
@@ -268,7 +308,7 @@ void app_main(void)
     xTaskCreatePinnedToCore(
         output_task,
         "output_task",
-        4096,
+        8192,
         NULL,
         4,
         NULL,
